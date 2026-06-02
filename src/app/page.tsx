@@ -78,7 +78,12 @@ export default async function Home() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* character hero */}
         <Panel className="reveal p-6 lg:col-span-2" style={{ animationDelay: "40ms" }}>
-          <PanelHead eyebrow="Your Exile" title={PROFILE.character} note="awaiting link" />
+          <PanelHead
+            eyebrow="Your Exile"
+            title={PROFILE.character}
+            note="awaiting link"
+            action={<MoreLink href="/character" label="Open" />}
+          />
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
             <div className="relative grid h-24 w-24 shrink-0 place-items-center">
               <span className="sigil-ring absolute inset-0 rounded-full" />

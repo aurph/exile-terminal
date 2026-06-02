@@ -1,20 +1,27 @@
-import { Swords } from "lucide-react";
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { OracleChat } from "@/components/codex/OracleChat";
+
+export const dynamic = "force-dynamic";
 
 export default function BuildsPage() {
   return (
-    <PlaceholderPage
-      icon={Swords}
-      eyebrow="Build Guides"
-      title="The War Table"
-      sub="Browse what the ladder is actually winning with, then open a full visual build card."
-      lead="Live meta pulled from poe.ninja's ladder, opened into character-screen build cards: gear with item art, skill and support gem links, ascendancy and key passives, leveling, and how to play it."
-      points={[
-        "Sortable meta list by class, skill, popularity, and rough cost tier",
-        "Visual build card per build: gear slots, gem links, keystones as an icon list",
-        "Passive tree shown as its key-node list with an open-in-planner link",
-        "Your character alangreenspan appears here as a build card once linked",
-      ]}
-    />
+    <div className="reveal">
+      <PageHeader
+        eyebrow="Build Guides"
+        title="The War Table"
+        sub="Ask the Oracle what is winning right now. It searches the current meta and prices it out against the live economy."
+      />
+      <Panel className="p-5">
+        <OracleChat
+          suggestions={[
+            "What are the top meta builds right now?",
+            "Best cheap league-starter build?",
+            "Strongest Sorceress build this patch?",
+            "What clears endgame the fastest?",
+          ]}
+        />
+      </Panel>
+    </div>
   );
 }

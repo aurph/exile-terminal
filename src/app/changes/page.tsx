@@ -1,20 +1,27 @@
-import { ScrollText } from "lucide-react";
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { OracleChat } from "@/components/codex/OracleChat";
+
+export const dynamic = "force-dynamic";
 
 export default function ChangesPage() {
   return (
-    <PlaceholderPage
-      icon={ScrollText}
-      eyebrow="Patch Intelligence"
-      title="0.4 → 0.5"
-      sub="An interactive map of everything that changed, so you do not have to read a wall of patch notes."
-      lead="The full 0.4 to 0.5 transition, parsed into a browseable, filterable explorer: skills, supports, uniques, monsters, and systems, each diffed and categorized, with the Oracle ready to explain any single change."
-      points={[
-        "Every change categorized: buffs, nerfs, new, removed, reworked",
-        "Filter by skills, supports, uniques, ascendancies, and systems",
-        "Search any keyword across the whole 0.4 to 0.5 diff",
-        "Ask the Oracle to explain what a change means for your build",
-      ]}
-    />
+    <div className="reveal">
+      <PageHeader
+        eyebrow="Patch Intelligence"
+        title="What Changed"
+        sub="Ask the Oracle what is new. It searches the current patch notes and explains any change in plain terms."
+      />
+      <Panel className="p-5">
+        <OracleChat
+          suggestions={[
+            "What changed in the latest PoE2 patch?",
+            "Which skills got buffed or nerfed?",
+            "What uniques were added or reworked?",
+            "Any big endgame or atlas changes?",
+          ]}
+        />
+      </Panel>
+    </div>
   );
 }

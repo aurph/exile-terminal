@@ -13,7 +13,13 @@ const SUGGESTIONS = [
   "Is anything on my chase list worth it?",
 ];
 
-export function OracleChat({ initialAsk }: { initialAsk?: string }) {
+export function OracleChat({
+  initialAsk,
+  suggestions = SUGGESTIONS,
+}: {
+  initialAsk?: string;
+  suggestions?: string[];
+}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,7 +76,7 @@ export function OracleChat({ initialAsk }: { initialAsk?: string }) {
               It reads live prices, your tracker, and the web before answering.
             </p>
             <div className="mt-5 flex max-w-md flex-wrap justify-center gap-2">
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button
                   key={s}
                   type="button"

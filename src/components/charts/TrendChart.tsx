@@ -18,6 +18,14 @@ export function TrendChart({
   const H = 36;
   const pad = 2;
 
+  if (points.length < 2) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className={cn("w-full", className)} style={{ height }} aria-hidden>
+        <line x1={pad} x2={W - pad} y1={H / 2} y2={H / 2} stroke="#c2974a" strokeOpacity="0.2" strokeWidth="0.4" />
+      </svg>
+    );
+  }
+
   const min = Math.min(...points);
   const max = Math.max(...points);
   const span = max - min || 1;

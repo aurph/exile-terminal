@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import { getTracker, setStatus } from "@/lib/tracker";
 
 export async function GET() {
-  return NextResponse.json(await getTracker());
+  const c = await cookies();
+  const uid = c.get("poe_uid")?.value ?? null;
+  return NextResponse.json(await getTracker(uid));
 }
 
 const Body = z.object({
@@ -20,10 +24,23 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
+
+  const c = await cookies();
+  let uid = c.get("poe_uid")?.value;
+  if (!uid) {
+    uid = randomUUID();
+    c.set("poe_uid", uid, {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+      path: "/",
+    });
+  }
+
   const meta =
     parsed.itemId != null || parsed.name != null
       ? { itemId: parsed.itemId ?? 0, name: parsed.name ?? "" }
       : undefined;
-  const tracker = await setStatus(parsed.uniqueId, parsed.status, meta);
+  const tracker = await setStatus(uid, parsed.uniqueId, parsed.status, meta);
   return NextResponse.json(tracker[String(parsed.uniqueId)] ?? null);
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink, ShieldHalf } from "lucide-react";
 import { getCharacterDetail, rarityName, type GearPiece } from "@/lib/poe-character";
-import { PROFILE } from "@/lib/config";
+import { getSession } from "@/lib/session";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel, PanelHead } from "@/components/ui/Panel";
 import { cn } from "@/lib/cn";
@@ -15,52 +15,67 @@ const rarityClass: Record<string, string> = {
   unique: "t-unique",
 };
 
+function Notice({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="reveal">
+      <PageHeader eyebrow="Your Exile" title="Character" />
+      <Panel className="max-w-2xl p-8">
+        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-[6px] border border-gold-600/30 bg-ink-800/60">
+          <ShieldHalf size={22} strokeWidth={1.5} className="text-gold-300" />
+        </div>
+        <h3 className="font-display text-[16px] text-bone-100">{title}</h3>
+        <div className="mt-2 text-[13.5px] leading-relaxed text-bone-400">{children}</div>
+      </Panel>
+    </div>
+  );
+}
+
 export default async function CharacterPage() {
-  const detail = await getCharacterDetail(PROFILE.character);
+  const session = await getSession();
+
+  if (!session.account) {
+    return (
+      <Notice title="No account connected">
+        <p>
+          Point the terminal at a Path of Exile 2 account first, then come back for gear, stats, and passive
+          allocation.
+        </p>
+        <Link
+          href="/account"
+          className="mono mt-5 inline-flex rounded-[5px] border border-gold-600/40 bg-gold-500/10 px-3.5 py-2 text-[11px] uppercase tracking-[0.16em] text-gold-200 transition-colors hover:bg-gold-500/20"
+        >
+          Connect an account
+        </Link>
+      </Notice>
+    );
+  }
+
+  if (!session.character) {
+    return (
+      <Notice title={`No character set for ${session.account}`}>
+        <p>Add your main character name on the account screen and this fills with their gear and stats.</p>
+        <Link
+          href="/account"
+          className="mono mt-5 inline-flex rounded-[5px] border border-gold-600/40 bg-gold-500/10 px-3.5 py-2 text-[11px] uppercase tracking-[0.16em] text-gold-200 transition-colors hover:bg-gold-500/20"
+        >
+          Set a character
+        </Link>
+      </Notice>
+    );
+  }
+
+  const detail = await getCharacterDetail(session.account, session.character);
 
   if (!detail) {
     return (
-      <div className="reveal">
-        <PageHeader eyebrow="Your Exile" title={PROFILE.character} />
-        <Panel className="max-w-2xl p-8">
-          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-[6px] border border-gold-600/30 bg-ink-800/60">
-            <ShieldHalf size={22} strokeWidth={1.5} className="text-gold-300" />
-          </div>
-          <h3 className="font-display text-[16px] text-bone-100">Connect your character</h3>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-bone-400">
-            Account <span className="text-gold-300">{PROFILE.account}</span> and character{" "}
-            <span className="t-unique">{PROFILE.character}</span> are preconfigured. Give the app read
-            access one of two ways and this lights up with real gear, stats, and passive allocation:
-          </p>
-          <ol className="mt-5 flex flex-col gap-3">
-            <li className="flex gap-3 text-[13px] text-bone-300">
-              <span className="mono text-gold-400">1</span>
-              <span>
-                Set your profile to public at{" "}
-                <Link
-                  href="https://www.pathofexile.com/my-account/privacy"
-                  className="text-gold-300 underline decoration-gold-700/40 underline-offset-2 hover:text-gold-200"
-                >
-                  pathofexile.com privacy settings
-                </Link>
-                , then reload this page. Simplest, no secrets.
-              </span>
-            </li>
-            <li className="flex gap-3 text-[13px] text-bone-300">
-              <span className="mono text-gold-400">2</span>
-              <span>
-                Or keep it private and add <span className="mono text-gold-300">POESESSID</span> to your
-                environment. Copy the POESESSID cookie from pathofexile.com in your
-                browser.
-              </span>
-            </li>
-          </ol>
-          <p className="mono mt-6 text-[11px] text-bone-600">
-            Reads GGG&rsquo;s character endpoints with realm=poe2. The deep passive tree links out to a
-            planner.
-          </p>
-        </Panel>
-      </div>
+      <Notice title={`Cannot read ${session.character}`}>
+        <p>
+          No public data came back for <span className="t-unique">{session.character}</span> on account{" "}
+          <span className="text-gold-300">{session.account}</span>. Set that profile to public at
+          pathofexile.com privacy settings, or add a <span className="mono text-gold-300">POESESSID</span> to
+          the environment if you want to keep it private. Then reload.
+        </p>
+      </Notice>
     );
   }
 
@@ -68,7 +83,7 @@ export default async function CharacterPage() {
   return (
     <div className="reveal">
       <PageHeader
-        eyebrow={`Your Exile · ${s.league ?? PROFILE.league}`}
+        eyebrow={`Your Exile · ${s.league ?? session.account}`}
         title={s.name}
         sub={`Level ${s.level} ${s.className}`}
       />

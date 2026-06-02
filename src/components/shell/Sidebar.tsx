@@ -3,15 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
+import { Settings } from "lucide-react";
 import { NAV } from "@/lib/nav";
-import { PROFILE } from "@/lib/config";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function Sidebar() {
+export function Sidebar({
+  account,
+  character,
+}: {
+  account: string | null;
+  character: string | null;
+}) {
   const pathname = usePathname();
 
   return (
@@ -72,26 +78,35 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* character chip */}
+      {/* account chip */}
       <div className="px-3 pb-5">
         <div className="mx-3 mb-3 rule" />
-        <div className="panel panel-hover flex items-center gap-3 rounded-[5px] px-3 py-3">
+        <Link
+          href="/account"
+          className="panel panel-hover flex items-center gap-3 rounded-[5px] px-3 py-3"
+        >
           <div className="sigil-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold-600/30">
-            <span className="font-display text-[13px] text-gold-300">A</span>
+            <span className="font-display text-[13px] text-gold-300">
+              {(account ?? "?").charAt(0).toUpperCase()}
+            </span>
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="truncate font-display text-[13px] text-bone-100">
-              {PROFILE.character}
-            </div>
-            <div className="mono mt-0.5 text-[10.5px] text-bone-500">
-              not linked · {PROFILE.account}
-            </div>
+            {account ? (
+              <>
+                <div className="truncate font-display text-[13px] text-bone-100">
+                  {character || account}
+                </div>
+                <div className="mono mt-0.5 truncate text-[10.5px] text-bone-500">{account}</div>
+              </>
+            ) : (
+              <>
+                <div className="font-display text-[13px] text-bone-200">Connect account</div>
+                <div className="mono mt-0.5 text-[10.5px] text-bone-500">point the terminal</div>
+              </>
+            )}
           </div>
-          <span
-            className="ember h-1.5 w-1.5 shrink-0 rounded-full bg-blood-400"
-            title="character not yet linked"
-          />
-        </div>
+          <Settings size={14} strokeWidth={1.75} className="shrink-0 text-bone-600" />
+        </Link>
         <a
           href="https://github.com/aurph"
           target="_blank"

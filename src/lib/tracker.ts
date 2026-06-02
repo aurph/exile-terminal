@@ -2,9 +2,9 @@ import { promises as fs } from "fs";
 import path from "path";
 
 /**
- * Durable have/want/chasing tracker for uniques. Single-user, so a small JSON
- * file on disk is the right tool: zero native deps, works on any host with a
- * writable filesystem. Keyed by poe2scout UniqueItemId.
+ * Per-visitor have/want/chasing tracker for uniques, keyed by the `poe_uid`
+ * cookie. One small JSON file per visitor under data/trackers: zero native
+ * deps, works on any host with a writable filesystem.
  */
 export type TrackStatus = "have" | "want" | "chasing";
 export type TrackEntry = {
@@ -15,32 +15,36 @@ export type TrackEntry = {
 };
 export type Tracker = Record<string, TrackEntry>;
 
-const DIR = path.join(process.cwd(), "data");
-const FILE = path.join(DIR, "tracker.json");
+const DIR = path.join(process.cwd(), "data", "trackers");
 
-async function read(): Promise<Tracker> {
+function fileFor(uid: string): string {
+  return path.join(DIR, `${uid.replace(/[^a-zA-Z0-9_-]/g, "")}.json`);
+}
+
+async function read(uid: string): Promise<Tracker> {
   try {
-    return JSON.parse(await fs.readFile(FILE, "utf8")) as Tracker;
+    return JSON.parse(await fs.readFile(fileFor(uid), "utf8")) as Tracker;
   } catch {
     return {};
   }
 }
 
-async function write(t: Tracker): Promise<void> {
+async function write(uid: string, t: Tracker): Promise<void> {
   await fs.mkdir(DIR, { recursive: true });
-  await fs.writeFile(FILE, JSON.stringify(t, null, 2), "utf8");
+  await fs.writeFile(fileFor(uid), JSON.stringify(t, null, 2), "utf8");
 }
 
-export async function getTracker(): Promise<Tracker> {
-  return read();
+export async function getTracker(uid: string | null): Promise<Tracker> {
+  return uid ? read(uid) : {};
 }
 
 export async function setStatus(
+  uid: string,
   uniqueId: number,
   status: TrackStatus | null,
   meta?: { itemId: number; name: string }
 ): Promise<Tracker> {
-  const t = await read();
+  const t = await read(uid);
   const key = String(uniqueId);
   if (status === null) {
     delete t[key];
@@ -52,6 +56,6 @@ export async function setStatus(
       updatedAt: Date.now(),
     };
   }
-  await write(t);
+  await write(uid, t);
   return t;
 }

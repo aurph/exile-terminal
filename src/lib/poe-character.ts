@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { cached } from "./cache";
-import { PROFILE } from "./config";
 
 /**
  * Reads the user's PoE2 characters from GGG's public character-window
@@ -102,11 +101,12 @@ export function characterLinkConfigured(): boolean {
   return Boolean(process.env.POESESSID);
 }
 
-export async function getCharacters(): Promise<CharacterSummary[] | null> {
+export async function getCharacters(account: string): Promise<CharacterSummary[] | null> {
+  if (!account) return null;
   try {
-    const { data } = await cached(`chars:${PROFILE.account}`, 10 * 60_000, () =>
+    const { data } = await cached(`chars:${account}`, 10 * 60_000, () =>
       ggg(
-        `/get-characters?accountName=${encodeURIComponent(PROFILE.account)}&realm=${REALM}`,
+        `/get-characters?accountName=${encodeURIComponent(account)}&realm=${REALM}`,
         z.array(CharacterZ)
       )
     );
@@ -116,13 +116,17 @@ export async function getCharacters(): Promise<CharacterSummary[] | null> {
   }
 }
 
-export async function getCharacterDetail(name: string): Promise<CharacterDetail | null> {
+export async function getCharacterDetail(
+  account: string,
+  name: string
+): Promise<CharacterDetail | null> {
+  if (!account || !name) return null;
   try {
-    const chars = await getCharacters();
+    const chars = await getCharacters(account);
     const summary = chars?.find((c) => c.name.toLowerCase() === name.toLowerCase());
     if (!summary) return null;
 
-    const q = `accountName=${encodeURIComponent(PROFILE.account)}&character=${encodeURIComponent(name)}&realm=${REALM}`;
+    const q = `accountName=${encodeURIComponent(account)}&character=${encodeURIComponent(name)}&realm=${REALM}`;
     const [items, passives] = await Promise.all([
       cached(`items:${name}`, 10 * 60_000, () => ggg(`/get-items?${q}`, ItemsResponseZ)),
       cached(`passives:${name}`, 10 * 60_000, () => ggg(`/get-passive-skills?${q}`, PassivesResponseZ)),

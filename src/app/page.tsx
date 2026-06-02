@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Delta } from "@/components/ui/Delta";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { PROFILE } from "@/lib/config";
+import { getSession } from "@/lib/session";
 import { getCurrencies, type Currency } from "@/lib/poe2scout";
 import { getTracker, type TrackStatus } from "@/lib/tracker";
 import { formatPrice, timeAgo } from "@/lib/format";
@@ -40,6 +41,8 @@ const STATUS_DOT: Record<TrackStatus, string> = {
 };
 
 export default async function Home() {
+  const session = await getSession();
+
   let econ: Awaited<ReturnType<typeof getCurrencies>> | null = null;
   try {
     econ = await getCurrencies("currency", { perPage: 40 });
@@ -48,7 +51,7 @@ export default async function Home() {
   }
   let tracker: Awaited<ReturnType<typeof getTracker>> = {};
   try {
-    tracker = await getTracker();
+    tracker = await getTracker(session.uid);
   } catch {
     tracker = {};
   }
@@ -66,13 +69,18 @@ export default async function Home() {
         .slice(0, 5)
     : [];
   const tracked = Object.values(tracker).sort((a, b) => b.updatedAt - a.updatedAt);
+  const heroLetter = (session.account ?? "?").charAt(0).toUpperCase();
 
   return (
     <>
       <PageHeader
         eyebrow={`Overview · ${league}`}
-        title={`Welcome back, ${PROFILE.account}`}
-        sub={`Your command terminal for Path of Exile 2. Tracking ${PROFILE.character} on patch ${PROFILE.patch}.`}
+        title={session.account ? `Welcome back, ${session.account}` : "Welcome, Exile"}
+        sub={
+          session.account
+            ? `Your command terminal for Path of Exile 2. Tracking ${session.character ?? "your characters"} on patch ${PROFILE.patch}.`
+            : "Live economy, a unique tracker, and an Oracle that knows the current patch. Connect an account to personalize it."
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -80,20 +88,25 @@ export default async function Home() {
         <Panel className="reveal p-6 lg:col-span-2" style={{ animationDelay: "40ms" }}>
           <PanelHead
             eyebrow="Your Exile"
-            title={PROFILE.character}
-            note="awaiting link"
-            action={<MoreLink href="/character" label="Open" />}
+            title={session.character || (session.account ? "Your character" : "No account")}
+            note={session.account ? "awaiting link" : "not connected"}
+            action={
+              <MoreLink
+                href={session.account ? "/character" : "/account"}
+                label={session.account ? "Open" : "Connect"}
+              />
+            }
           />
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
             <div className="relative grid h-24 w-24 shrink-0 place-items-center">
               <span className="sigil-ring absolute inset-0 rounded-full" />
-              <span className="font-display text-3xl text-gold-300">A</span>
+              <span className="font-display text-3xl text-gold-300">{heroLetter}</span>
             </div>
             <div className="flex-1">
               <div className="mb-3 flex items-center gap-2">
                 <span className="font-display text-[13px] text-bone-300">Class &amp; Ascendancy</span>
                 <span className="mono rounded border border-gold-700/30 px-1.5 py-0.5 text-[10px] text-bone-500">
-                  unknown until linked
+                  {session.account ? "unknown until linked" : "no account"}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -105,17 +118,18 @@ export default async function Home() {
             </div>
           </div>
           <p className="mt-5 text-[13px] leading-relaxed text-bone-400">
-            Link your account to pull {PROFILE.character}&rsquo;s real gear, passive tree, and stats. No
-            OAuth wait: set your Path of Exile profile public, or add a session token, and this lights up.
+            {session.account
+              ? `Set ${session.account}'s Path of Exile profile to public to pull real gear, passive tree, and stats here.`
+              : "Connect a Path of Exile 2 account to pull a character's real gear, passive tree, and stats."}
           </p>
         </Panel>
 
-        {/* 0.5 digest */}
+        {/* patch digest */}
         <Panel className="reveal p-6" style={{ animationDelay: "110ms" }}>
           <PanelHead eyebrow="Patch Notes" title="What changed" action={<MoreLink href="/changes" label="Explorer" />} />
           <p className="text-[13px] leading-relaxed text-bone-400">
-            The 0.4 to 0.5 digest opens in the interactive explorer: every change categorized, filterable,
-            and searchable.
+            Ask the Oracle what changed in the current patch. It searches the live notes and explains any
+            change.
           </p>
           <ul className="mt-4 flex flex-col gap-2.5">
             {["Skill and support rebalances", "New and reworked uniques", "Endgame and atlas changes"].map((t) => (
@@ -194,7 +208,7 @@ export default async function Home() {
           )}
         </Panel>
 
-        {/* chase list — real tracker */}
+        {/* tracker list */}
         <Panel className="reveal flex flex-col p-6" style={{ animationDelay: "320ms" }}>
           <PanelHead eyebrow="Uniques" title="Your List" action={tracked.length > 0 ? <MoreLink href="/uniques" label="Manage" /> : undefined} />
           {tracked.length > 0 ? (

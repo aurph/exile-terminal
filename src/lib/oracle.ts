@@ -74,7 +74,11 @@ const tools: Anthropic.Messages.ToolUnion[] = [
   { type: "web_search_20260209", name: "web_search" },
 ];
 
-async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
+async function runTool(
+  name: string,
+  input: Record<string, unknown>,
+  uid: string | null
+): Promise<string> {
   try {
     if (name === "get_economy") {
       const cat = (input.category as string) || "currency";
@@ -97,7 +101,7 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
       return JSON.stringify({ league: page.league.value, category: cat, items });
     }
     if (name === "get_tracked_uniques") {
-      const t = await getTracker();
+      const t = await getTracker(uid);
       return JSON.stringify(Object.values(t).map((e) => ({ name: e.name, status: e.status })));
     }
     if (name === "get_current_league") {
@@ -114,7 +118,8 @@ export type OracleMessage = { role: "user" | "assistant"; content: string };
 
 export async function askOracle(
   question: string,
-  history: OracleMessage[] = []
+  history: OracleMessage[] = [],
+  ctx: { uid: string | null } = { uid: null }
 ): Promise<{ answer: string; usedWeb: boolean }> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return {
@@ -150,7 +155,7 @@ export async function askOracle(
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of res.content) {
         if (block.type === "tool_use") {
-          const out = await runTool(block.name, (block.input ?? {}) as Record<string, unknown>);
+          const out = await runTool(block.name, (block.input ?? {}) as Record<string, unknown>, ctx.uid);
           results.push({ type: "tool_result", tool_use_id: block.id, content: out });
         }
       }

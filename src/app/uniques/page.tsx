@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Search, TriangleAlert, ArrowLeft, ArrowRight } from "lucide-react";
 import { getUniques, getCategories, type Category } from "@/lib/poe2scout";
 import { getTracker } from "@/lib/tracker";
+import { getSession } from "@/lib/session";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
 import { UniqueCard } from "@/components/uniques/UniqueCard";
@@ -16,6 +17,7 @@ export default async function UniquesPage({
   searchParams: Promise<{ cat?: string; page?: string; q?: string }>;
 }) {
   const sp = await searchParams;
+  const session = await getSession();
   const cat = sp.cat ?? "weapon";
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const q = (sp.q ?? "").trim();
@@ -28,7 +30,7 @@ export default async function UniquesPage({
     [data, cats, tracker] = await Promise.all([
       getUniques(cat, { page, perPage: 48, search: q }),
       getCategories(),
-      getTracker(),
+      getTracker(session.uid),
     ]);
   } catch (e) {
     error = e instanceof Error ? e.message : "request failed";

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { askOracle } from "@/lib/oracle";
+import { getSession } from "@/lib/session";
 
 export const maxDuration = 60;
 
@@ -20,7 +21,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid request" }, { status: 400 });
   }
   try {
-    const result = await askOracle(body.question, body.history ?? []);
+    const session = await getSession();
+    const result = await askOracle(body.question, body.history ?? [], { uid: session.uid });
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(

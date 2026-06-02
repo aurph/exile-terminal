@@ -60,5 +60,5 @@ Set the environment variables above in your host's environment or secrets store.
 ---
 
 <div align="center">
-Designed and built end to end with <a href="https://claude.com/claude-code">Claude</a>.
+By <a href="https://github.com/aurph">Jack Schwartz</a> (aurph). Built with <a href="https://claude.com/claude-code">Claude</a>.
 </div>

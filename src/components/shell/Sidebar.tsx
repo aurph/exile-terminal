@@ -92,6 +92,14 @@ export function Sidebar() {
             title="character not yet linked"
           />
         </div>
+        <a
+          href="https://github.com/aurph"
+          target="_blank"
+          rel="noreferrer"
+          className="mono mt-3 block px-1 text-center text-[10px] text-bone-600 transition-colors hover:text-gold-400"
+        >
+          Built by Jack Schwartz (aurph)
+        </a>
       </div>
     </aside>
   );

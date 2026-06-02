@@ -1,0 +1,230 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------------------------------
+   Arcane Ledger — design tokens
+   A dark occult terminal: obsidian, engraved antique gold, blood, verdigris,
+   bone parchment text. PoE item-rarity colors preserved exactly.
+---------------------------------------------------------------------------- */
+@theme {
+  /* surfaces — warm obsidian, not flat black */
+  --color-obsidian: #0b0907;
+  --color-ink-950: #0d0a08;
+  --color-ink-900: #120d0a;
+  --color-ink-800: #18120c;
+  --color-ink-700: #1f1810;
+  --color-ink-600: #281f14;
+  --color-ink-500: #342818;
+
+  /* antique gold / brass — the engraved accent */
+  --color-gold-200: #f1dca6;
+  --color-gold-300: #e6c987;
+  --color-gold-400: #d4af63;
+  --color-gold-500: #c2974a;
+  --color-gold-600: #9d7833;
+  --color-gold-700: #6f521f;
+
+  /* blood — danger, loss, importance */
+  --color-blood-400: #cf4436;
+  --color-blood-500: #a82f28;
+  --color-blood-600: #7c2018;
+
+  /* verdigris — oxidized copper, gains, sync, life */
+  --color-verdigris-300: #7cc1ad;
+  --color-verdigris-400: #569a86;
+  --color-verdigris-500: #3c7868;
+
+  /* bone — parchment text */
+  --color-bone-100: #f4ecda;
+  --color-bone-200: #e6dcc4;
+  --color-bone-300: #d2c4a4;
+  --color-bone-400: #b3a585;
+  --color-bone-500: #8d8068;
+  --color-bone-600: #6a604d;
+  --color-bone-700: #4c4536;
+
+  /* PoE rarity — do not alter */
+  --color-rarity-unique: #af6025;
+  --color-rarity-rare: #f1d33f;
+  --color-rarity-magic: #8f8fef;
+  --color-rarity-normal: #c8c8c8;
+  --color-rarity-currency: #bfa86b;
+  --color-rarity-gem: #1ba29b;
+
+  /* type */
+  --font-display: var(--font-cinzel);
+  --font-body: var(--font-spectral);
+  --font-mono: var(--font-plex-mono);
+}
+
+/* ----------------------------------------------------------------------------
+   Base
+---------------------------------------------------------------------------- */
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--color-obsidian);
+    color: var(--color-bone-200);
+    font-family: var(--font-body);
+    font-feature-settings: "liga" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+  }
+  ::selection {
+    background: rgba(194, 151, 74, 0.28);
+    color: var(--color-bone-100);
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--color-bone-100);
+  }
+  /* slim, themed scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(194, 151, 74, 0.25) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(194, 151, 74, 0.35), rgba(124, 32, 24, 0.25));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Atmosphere — layered glow, vignette, film grain
+---------------------------------------------------------------------------- */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  background-image:
+    radial-gradient(115% 70% at 50% -12%, rgba(194, 151, 74, 0.11), transparent 60%),
+    radial-gradient(80% 55% at 100% 0%, rgba(168, 47, 40, 0.07), transparent 55%),
+    radial-gradient(90% 60% at 0% 100%, rgba(60, 120, 104, 0.05), transparent 60%),
+    linear-gradient(180deg, #0e0b08 0%, #0a0806 55%, #080605 100%);
+}
+.atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* vignette */
+  background: radial-gradient(120% 120% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: -9;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ----------------------------------------------------------------------------
+   Components
+---------------------------------------------------------------------------- */
+.panel {
+  position: relative;
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgba(40, 31, 20, 0.50) 0%, rgba(18, 13, 10, 0.62) 100%);
+  border: 1px solid rgba(194, 151, 74, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(241, 220, 166, 0.06),
+    inset 0 0 30px -18px rgba(0, 0, 0, 0.9),
+    0 24px 50px -34px rgba(0, 0, 0, 0.95);
+}
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(230, 201, 135, 0.45), transparent);
+  opacity: 0.7;
+}
+.panel-hover {
+  transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+}
+.panel-hover:hover {
+  border-color: rgba(212, 175, 99, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(241, 220, 166, 0.1),
+    0 28px 60px -32px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(194, 151, 74, 0.05);
+  transform: translateY(-2px);
+}
+
+/* engraved gold foil text */
+.foil {
+  background: linear-gradient(176deg, #f6e2ad 0%, #d4af63 46%, #9d7833 78%, #c2974a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* small mono label */
+.eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--color-gold-500);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* hairline divider */
+.rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(194, 151, 74, 0.22), transparent);
+}
+
+/* faint engraved sigil ring used as a watermark */
+.sigil-ring {
+  background:
+    radial-gradient(circle at center, transparent 58%, rgba(194, 151, 74, 0.12) 59%, transparent 61%),
+    radial-gradient(circle at center, transparent 44%, rgba(194, 151, 74, 0.08) 45%, transparent 47%);
+}
+
+/* rarity text helpers */
+.t-unique { color: var(--color-rarity-unique); }
+.t-rare { color: var(--color-rarity-rare); }
+.t-magic { color: var(--color-rarity-magic); }
+.t-currency { color: var(--color-rarity-currency); }
+.t-gem { color: var(--color-rarity-gem); }
+
+/* ----------------------------------------------------------------------------
+   Motion
+---------------------------------------------------------------------------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes emberPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.reveal {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.ember {
+  animation: emberPulse 2.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .ember { animation: none; }
+  .panel-hover { transition: none; }
+}

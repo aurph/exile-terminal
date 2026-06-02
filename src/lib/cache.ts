@@ -1,6 +1,6 @@
 /**
  * Tiny in-process TTL cache. The app runs as one long-lived Node server
- * (locally and on Replit), so a module-level map persists across requests.
+ * so a module-level map persists across requests.
  * Cache-first: serve fresh within the TTL, and on a fetch failure fall back to
  * the last good value rather than erroring the page.
  */

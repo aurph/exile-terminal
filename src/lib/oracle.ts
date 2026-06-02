@@ -119,7 +119,7 @@ export async function askOracle(
   if (!process.env.ANTHROPIC_API_KEY) {
     return {
       answer:
-        "The Oracle needs an ANTHROPIC_API_KEY to speak. Add it to your environment (Replit Secrets), then ask again.",
+        "The Oracle needs an ANTHROPIC_API_KEY to speak. Add it to your environment, then ask again.",
       usedWeb: false,
     };
   }

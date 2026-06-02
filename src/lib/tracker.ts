@@ -3,8 +3,8 @@ import path from "path";
 
 /**
  * Durable have/want/chasing tracker for uniques. Single-user, so a small JSON
- * file on disk is the right tool: zero native deps, works identically locally
- * and on Replit's persistent filesystem. Keyed by poe2scout UniqueItemId.
+ * file on disk is the right tool: zero native deps, works on any host with a
+ * writable filesystem. Keyed by poe2scout UniqueItemId.
  */
 export type TrackStatus = "have" | "want" | "chasing";
 export type TrackEntry = {

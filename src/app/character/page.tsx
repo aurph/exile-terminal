@@ -50,7 +50,7 @@ export default async function CharacterPage() {
               <span className="mono text-gold-400">2</span>
               <span>
                 Or keep it private and add <span className="mono text-gold-300">POESESSID</span> to your
-                environment (Replit Secrets). Copy the POESESSID cookie from pathofexile.com in your
+                environment. Copy the POESESSID cookie from pathofexile.com in your
                 browser.
               </span>
             </li>

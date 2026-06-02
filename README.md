@@ -1,8 +1,12 @@
+<div align="center">
+
 # Exile Terminal
 
-A personalized, single-user Path of Exile 2 command center: a dark "Arcane Ledger" dashboard with live economy data, a unique-item tracker, a tool-calling Oracle, and a character view. Built for account `aurph` (main `alangreenspan`).
+A personalized, single-user **Path of Exile 2** command center: live economy, a unique-item tracker, and a tool-calling AI Oracle, in a dark "Arcane Ledger" interface.
 
-Next.js 16, React 19, Tailwind v4, TypeScript.
+Next.js 16 · React 19 · Tailwind v4 · TypeScript
+
+</div>
 
 ## Areas
 - **Overview**: live economy, market movers, your tracker, and the current league at a glance.
@@ -27,7 +31,7 @@ npm run dev      # http://localhost:3000
 The app is usable with no secrets at all: Overview, Market, and Uniques are live out of the box. The Oracle and Character areas light up once you add the config below.
 
 ## Configuration
-Create `.env.local` (gitignored), or on Replit use Secrets:
+Create `.env.local` (gitignored), or set these in your deployment environment:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
@@ -41,11 +45,20 @@ Create `.env.local` (gitignored), or on Replit use Secrets:
 ### Connecting your character
 The Character page reads GGG's public character endpoints. Either set your profile to public at pathofexile.com privacy settings (simplest), or add `POESESSID` to keep it private.
 
-## Deploy on Replit
-1. Import this GitHub repo into Replit.
-2. Add `ANTHROPIC_API_KEY` (and any optional vars) in Secrets.
-3. Run `npm install`, then `npm run build` and `npm start`.
+## Deploy
+Any Node host works:
+```bash
+npm install
+npm run build
+npm start
+```
+Set the environment variables above in your host's environment or secrets store.
 
 ## Notes
 - Single user, no login. External data is cached in-process with a short TTL and falls back to the last good value on a failed fetch.
-- The original product brief is in `docs/BUILD_PROMPT.md`.
+
+---
+
+<div align="center">
+Designed and built end to end with <a href="https://claude.com/claude-code">Claude</a>.
+</div>

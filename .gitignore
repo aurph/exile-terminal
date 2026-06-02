@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# env
+.env
+.env.local
+.env*.local
+!.env.example
+
+# sqlite
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*
+.vercel
+coverage/

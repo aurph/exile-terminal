@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Exile Terminal
 
-## Getting Started
+A personalized, single-user Path of Exile 2 command center: a dark "Arcane Ledger" dashboard with live economy data, a unique-item tracker, a tool-calling Oracle, and a character view. Built for account `aurph` (main `alangreenspan`).
 
-First, run the development server:
+Next.js 16, React 19, Tailwind v4, TypeScript.
 
+## Areas
+- **Overview**: live economy, market movers, your tracker, and the current league at a glance.
+- **Character**: your gear, stats, and passive count from GGG (needs account access, see below).
+- **Build Guides**: ask the Oracle what is winning; web-grounded and priced against live data.
+- **Market**: full currency exchange with sparklines, categories, search, and pagination.
+- **Uniques**: the full catalog with live prices, plus a have / want / chasing tracker.
+- **Codex (Oracle)**: a tool-calling assistant over live prices, your tracker, and web search.
+- **Patch Changes**: ask the Oracle what changed in the current patch.
+
+## Data sources
+- **poe2scout.com**: live currency and unique prices. No key needed.
+- **Anthropic Claude API**: the Oracle and the Oracle-powered pages. Needs `ANTHROPIC_API_KEY`.
+- **GGG character-window endpoints** (realm=poe2): the Character page. Needs a public profile or `POESESSID`.
+- **Web search**: a server-side tool the Oracle uses for current-patch facts.
+
+## Run locally
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
 ```
+The app is usable with no secrets at all: Overview, Market, and Uniques are live out of the box. The Oracle and Character areas light up once you add the config below.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Configuration
+Create `.env.local` (gitignored), or on Replit use Secrets:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | for AI features | Powers the Oracle, Build Guides, and Patch Changes. Get one at console.anthropic.com. |
+| `ORACLE_MODEL` | optional | Oracle model. Defaults to `claude-opus-4-8`. Use `claude-sonnet-4-6` or `claude-haiku-4-5` to cut cost. |
+| `POESESSID` | optional | pathofexile.com session cookie, for the Character page when your profile is private. |
+| `NEXT_PUBLIC_POE_ACCOUNT` | optional | Account name. Defaults to `aurph`. |
+| `NEXT_PUBLIC_POE_CHARACTER` | optional | Character name. Defaults to `alangreenspan`. |
+| `NEXT_PUBLIC_POE_LEAGUE` | optional | Fallback league label. The live league is detected automatically. |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Connecting your character
+The Character page reads GGG's public character endpoints. Either set your profile to public at pathofexile.com privacy settings (simplest), or add `POESESSID` to keep it private.
 
-## Learn More
+## Deploy on Replit
+1. Import this GitHub repo into Replit.
+2. Add `ANTHROPIC_API_KEY` (and any optional vars) in Secrets.
+3. Run `npm install`, then `npm run build` and `npm start`.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+- Single user, no login. External data is cached in-process with a short TTL and falls back to the last good value on a failed fetch.
+- The original product brief is in `docs/BUILD_PROMPT.md`.

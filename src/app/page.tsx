@@ -1,41 +1,24 @@
 import Link from "next/link";
-import { ArrowUpRight, Gem, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Gem, TrendingUp, Activity, Vault } from "lucide-react";
 import { Panel, PanelHead } from "@/components/ui/Panel";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Delta } from "@/components/ui/Delta";
 import { TrendChart } from "@/components/charts/TrendChart";
+import { MoversBars } from "@/components/charts/MoversBars";
+import { UniqueCard } from "@/components/uniques/UniqueCard";
+import { CampaignSpine } from "@/components/story/CampaignSpine";
 import { PROFILE } from "@/lib/config";
 import { getSession } from "@/lib/session";
-import { aiEnabled } from "@/lib/ai";
-import { getCurrencies, type Currency } from "@/lib/poe2scout";
+import { getCurrencies, getUniques, getExchangePulse, type Unique } from "@/lib/poe2scout";
 import { getTracker, type TrackStatus } from "@/lib/tracker";
 import { getProgress } from "@/lib/progress-store";
-import { CAMPAIGN, TOTAL_MILESTONES } from "@/lib/campaign";
+import { TOTAL_MILESTONES } from "@/lib/campaign";
 import { formatPrice, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 
-function MoreLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="mono inline-flex items-center gap-1 text-[10.5px] uppercase tracking-[0.18em] text-bone-500 transition-colors hover:text-gold-300"
-    >
-      {label}
-      <ArrowUpRight size={12} strokeWidth={2} />
-    </Link>
-  );
-}
-
-function StatSlot({ label }: { label: string }) {
-  return (
-    <div className="rounded-[5px] border border-dashed border-gold-700/30 bg-ink-900/40 px-3 py-2.5">
-      <div className="eyebrow text-[9px] text-bone-600">{label}</div>
-      <div className="mono mt-1 text-lg text-bone-500">&mdash;</div>
-    </div>
-  );
-}
+const compact = (n: number) =>
+  n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(Math.round(n));
 
 const STATUS_DOT: Record<TrackStatus, string> = {
   have: "bg-verdigris-400",
@@ -43,232 +26,243 @@ const STATUS_DOT: Record<TrackStatus, string> = {
   chasing: "bg-gold-400",
 };
 
+function MoreLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="mono inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.18em] text-bone-500 transition-colors hover:text-gold-300"
+    >
+      {label}
+      <ArrowUpRight size={12} strokeWidth={2} />
+    </Link>
+  );
+}
+
+function Tick({ label, children, accent }: { label: string; children: React.ReactNode; accent?: boolean }) {
+  return (
+    <span className="flex items-center gap-2 whitespace-nowrap">
+      <span className="mono text-[9.5px] uppercase tracking-[0.16em] text-bone-600">{label}</span>
+      <span className={cn("mono text-[12px]", accent ? "text-gold-300" : "text-bone-100")}>{children}</span>
+    </span>
+  );
+}
+
 export default async function Home() {
   const session = await getSession();
-  const ai = aiEnabled();
 
-  let econ: Awaited<ReturnType<typeof getCurrencies>> | null = null;
-  try {
-    econ = await getCurrencies("currency", { perPage: 40 });
-  } catch {
-    econ = null;
-  }
-  let tracker: Awaited<ReturnType<typeof getTracker>> = {};
-  try {
-    tracker = await getTracker(session.uid);
-  } catch {
-    tracker = {};
-  }
+  const [econ, weapons, armour, pulse, tracker, progress] = await Promise.all([
+    getCurrencies("currency", { perPage: 60 }).catch(() => null),
+    getUniques("weapon", { perPage: 24 }).catch(() => null),
+    getUniques("armour", { perPage: 16 }).catch(() => null),
+    getExchangePulse().catch(() => null),
+    getTracker(session.uid).catch(() => ({}) as Awaited<ReturnType<typeof getTracker>>),
+    getProgress(session.uid).catch(() => [] as string[]),
+  ]);
 
   const league = econ?.league.value ?? PROFILE.league;
-  const sorted = econ ? [...econ.items].sort((a, b) => (b.price ?? 0) - (a.price ?? 0)) : [];
-  const hero: Currency | null = econ
-    ? econ.items.find((c) => /^divine/i.test(c.name)) ?? sorted.find((c) => c.history.length > 1) ?? sorted[0] ?? null
-    : null;
-  const topList = sorted.filter((c) => c !== hero).slice(0, 5);
+  const currSorted = econ ? [...econ.items].sort((a, b) => (b.price ?? 0) - (a.price ?? 0)) : [];
+  const hero =
+    econ?.items.find((c) => /^divine/i.test(c.name)) ??
+    currSorted.find((c) => c.history.length > 1) ??
+    currSorted[0] ??
+    null;
+  const exchangeList = currSorted.filter((c) => c !== hero).slice(0, 6);
+  const vault = currSorted.slice(0, 8);
   const movers = econ
     ? [...econ.items]
         .filter((c) => c.change != null)
         .sort((a, b) => Math.abs(b.change as number) - Math.abs(a.change as number))
-        .slice(0, 5)
+        .slice(0, 7)
+        .map((c) => ({ name: c.name, icon: c.icon, change: c.change as number }))
     : [];
-  const tracked = Object.values(tracker).sort((a, b) => b.updatedAt - a.updatedAt);
-  const heroLetter = (session.account ?? "?").charAt(0).toUpperCase();
 
-  let progress: string[] = [];
-  try {
-    progress = await getProgress(session.uid);
-  } catch {
-    progress = [];
+  const seen = new Set<number>();
+  const chase: Unique[] = [];
+  for (const u of [...(weapons?.items ?? []), ...(armour?.items ?? [])]
+    .filter((u) => u.price != null)
+    .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))) {
+    if (seen.has(u.id)) continue;
+    seen.add(u.id);
+    chase.push(u);
+    if (chase.length >= 6) break;
   }
-  const campSet = new Set(progress);
-  const campDone = progress.length;
-  const campPct = Math.round((campDone / TOTAL_MILESTONES) * 100);
-  const currentAct = CAMPAIGN.find((a) => !a.milestones.every((m) => campSet.has(m.id)));
-  const campLabel = currentAct ? `at ${currentAct.name}` : "Endgame reached";
+
+  const tracked = Object.values(tracker).sort((a, b) => b.updatedAt - a.updatedAt);
+  const pct = Math.round((progress.length / TOTAL_MILESTONES) * 100);
 
   return (
-    <>
-      <PageHeader
-        eyebrow={`Overview · ${league}`}
-        title={session.account ? `Welcome back, ${session.account}` : "Welcome, Exile"}
-        sub={
-          session.account
-            ? `Your command terminal for Path of Exile 2. Tracking ${session.character ?? "your characters"} on patch ${PROFILE.patch}.`
-            : "Live economy, a unique tracker, and a 0.5 campaign route to the endgame. Connect an account to personalize it."
-        }
-      />
+    <div className="reveal">
+      {/* command header + ticker */}
+      <div className="mb-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="eyebrow mb-2 flex items-center gap-2 text-bone-500">
+              <span className="h-1.5 w-1.5 rotate-45 bg-gold-400" />
+              Overview · {league}
+            </div>
+            <h1 className="font-display text-2xl leading-none text-bone-100 sm:text-[30px]">
+              {session.account ? `Welcome back, ${session.account}` : "Wraeclast at a Glance"}
+            </h1>
+          </div>
+          {econ && (
+            <span className="mono text-[10.5px] text-bone-600">feed · {timeAgo(econ.fetchedAt)}</span>
+          )}
+        </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* character hero */}
-        <Panel className="reveal p-6 lg:col-span-2" style={{ animationDelay: "40ms" }}>
+        <div className="panel mt-4 flex flex-wrap items-center gap-x-6 gap-y-2.5 px-4 py-3">
+          <Tick label="Divine" accent>
+            {hero ? `${formatPrice(hero.price, "")} ex` : "—"}
+          </Tick>
+          <span className="hidden h-3.5 w-px bg-gold-700/25 sm:block" />
+          <Tick label="Mkt Vol">{pulse ? compact(pulse.volume) : "—"}</Tick>
+          <Tick label="Mkt Cap">{pulse ? compact(pulse.marketCap) : "—"}</Tick>
+          <span className="hidden h-3.5 w-px bg-gold-700/25 sm:block" />
+          <Tick label="Tracked">{tracked.length}</Tick>
+          <Tick label="Campaign" accent>
+            {pct}%
+          </Tick>
+          <Tick label="League">{league}</Tick>
+        </div>
+      </div>
+
+      {/* zone 1 — chase uniques + campaign */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Panel className="reveal p-5 xl:col-span-8" style={{ animationDelay: "40ms" }}>
           <PanelHead
-            eyebrow="Your Exile"
-            title={session.character || (session.account ? "Your character" : "No account")}
-            note={session.account ? "awaiting link" : "not connected"}
-            action={
-              <MoreLink
-                href={session.account ? "/character" : "/account"}
-                label={session.account ? "Open" : "Connect"}
-              />
-            }
+            eyebrow="The Reliquary"
+            title="Chase Items"
+            note="the economy's priciest uniques"
+            action={<MoreLink href="/uniques" label="All uniques" />}
           />
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-            <div className="relative grid h-24 w-24 shrink-0 place-items-center">
-              <span className="sigil-ring absolute inset-0 rounded-full" />
-              <span className="font-display text-3xl text-gold-300">{heroLetter}</span>
+          {chase.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {chase.map((u) => (
+                <UniqueCard key={u.id} unique={u} initialStatus={tracker[String(u.id)]?.status ?? null} />
+              ))}
             </div>
-            <div className="flex-1">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="font-display text-[13px] text-bone-300">Class &amp; Ascendancy</span>
-                <span className="mono rounded border border-gold-700/30 px-1.5 py-0.5 text-[10px] text-bone-500">
-                  {session.account ? "unknown until linked" : "no account"}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <StatSlot label="Life" />
-                <StatSlot label="Energy Shield" />
-                <StatSlot label="Spirit" />
-                <StatSlot label="DPS" />
-              </div>
-            </div>
-          </div>
-          <p className="mt-5 text-[13px] leading-relaxed text-bone-400">
-            {session.account
-              ? `Set ${session.account}'s Path of Exile profile to public to pull real gear, passive tree, and stats here.`
-              : "Connect a Path of Exile 2 account to pull a character's real gear, passive tree, and stats."}
-          </p>
+          ) : (
+            <p className="py-10 text-center text-[13px] text-bone-500">Reliquary feed is warming up.</p>
+          )}
         </Panel>
 
-        {/* campaign progress — always available */}
-        <Panel className="reveal flex flex-col p-6" style={{ animationDelay: "110ms" }}>
+        <Panel className="reveal flex flex-col p-5 xl:col-span-4" style={{ animationDelay: "110ms" }}>
           <PanelHead eyebrow="Campaign" title="The Fast Road" action={<MoreLink href="/story" label="Open" />} />
-          <div className="flex items-end justify-between gap-3">
-            <div className="foil font-display text-[34px] leading-none">{campPct}%</div>
-            <div className="text-right">
-              <div className="mono text-[12.5px] text-bone-300">{campDone} / {TOTAL_MILESTONES}</div>
-              <div className="mono text-[10px] text-bone-600">{campLabel}</div>
-            </div>
-          </div>
-          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink-700/60">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-gold-600 to-gold-300"
-              style={{ width: `${campPct}%` }}
-            />
-          </div>
-          <p className="mt-4 text-[12.5px] leading-relaxed text-bone-500">
-            The 0.5 speed route to maps: both Ascendancy trials, the high-value pickups, and every act
-            reward in order.
-          </p>
+          <CampaignSpine checked={progress} />
         </Panel>
+      </div>
 
-        {ai && (
-        <Panel className="reveal p-6" style={{ animationDelay: "170ms" }}>
-          <PanelHead eyebrow="Patch Notes" title="What changed" action={<MoreLink href="/changes" label="Explorer" />} />
-          <p className="text-[13px] leading-relaxed text-bone-400">
-            Ask the Oracle what changed in the current patch. It searches the live notes and explains any
-            change.
-          </p>
-          <ul className="mt-4 flex flex-col gap-2.5">
-            {["Skill and support rebalances", "New and reworked uniques", "Endgame and atlas changes"].map((t) => (
-              <li key={t} className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2.5 text-[13px] text-bone-300">
-                  <span className="h-1 w-1 shrink-0 rotate-45 bg-gold-400" />
-                  {t}
-                </span>
-                <span className="mono text-[9px] uppercase tracking-wider text-bone-600">explore</span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-        )}
-
-        {/* economy — live */}
-        <Panel className="reveal p-6 lg:col-span-2" style={{ animationDelay: "180ms" }}>
+      {/* zone 2 — exchange + vault + movers */}
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Panel className="reveal p-5 xl:col-span-5" style={{ animationDelay: "180ms" }}>
           <PanelHead
             eyebrow="Economy"
             title="Currency Exchange"
-            note={econ ? `live · ${timeAgo(econ.fetchedAt)}` : "feed warming up"}
-            action={<MoreLink href="/market" label="All markets" />}
+            note={hero ? `${hero.name} · in Exalted` : undefined}
+            action={<MoreLink href="/market" label="Markets" />}
           />
           {hero ? (
             <>
               <div className="mb-2 flex items-end justify-between">
-                <div>
-                  <div className="eyebrow text-bone-500">{hero.name} · in Exalted</div>
-                  <div className="foil font-display text-[34px] leading-none">
-                    {formatPrice(hero.price, "")}
-                    <span className="mono ml-1.5 text-sm text-bone-500">ex</span>
-                  </div>
+                <div className="foil font-display text-[32px] leading-none">
+                  {formatPrice(hero.price, "")}
+                  <span className="mono ml-1.5 text-sm text-bone-500">ex</span>
                 </div>
                 {hero.change != null && <Delta value={hero.change} className="mb-1" />}
               </div>
-              <TrendChart points={hero.history} height={110} />
+              <TrendChart points={hero.history} height={96} />
               <div className="my-4 rule" />
               <ul className="flex flex-col gap-2.5">
-                {topList.map((c) => (
+                {exchangeList.map((c) => (
                   <li key={c.id} className="flex items-center justify-between">
-                    <span className="t-currency truncate pr-3 text-[13.5px]">{c.name}</span>
+                    <span className="t-currency truncate pr-3 text-[13px]">{c.name}</span>
                     <span className="flex items-center gap-3">
-                      <span className="mono text-[13px] text-bone-200">{formatPrice(c.price)}</span>
-                      {c.change != null ? <Delta value={c.change} className="w-14 justify-end" /> : <span className="w-14" />}
+                      <span className="mono text-[12.5px] text-bone-200">{formatPrice(c.price)}</span>
+                      {c.change != null ? (
+                        <Delta value={c.change} className="w-12 justify-end" />
+                      ) : (
+                        <span className="w-12" />
+                      )}
                     </span>
                   </li>
                 ))}
               </ul>
             </>
           ) : (
-            <p className="py-8 text-center text-[13px] text-bone-500">Economy feed is warming up. Refresh in a moment.</p>
+            <p className="py-10 text-center text-[13px] text-bone-500">Economy feed is warming up.</p>
           )}
         </Panel>
 
-        {/* movers — live */}
-        <Panel className="reveal p-6" style={{ animationDelay: "250ms" }}>
+        <Panel className="reveal p-5 xl:col-span-4" style={{ animationDelay: "250ms" }}>
           <PanelHead
-            eyebrow="Movers"
-            title="Biggest Swings"
+            eyebrow="The Vault"
+            title="Most Valuable"
+            action={<Vault size={15} strokeWidth={1.75} className="text-gold-400" />}
+          />
+          {vault.length > 0 ? (
+            <ol className="flex flex-col gap-2.5">
+              {vault.map((c, i) => (
+                <li key={c.id} className="flex items-center gap-3">
+                  <span className="mono w-4 shrink-0 text-[11px] text-bone-600">{i + 1}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.icon} alt="" className="h-6 w-6 shrink-0 object-contain" loading="lazy" />
+                  <span className="t-currency min-w-0 flex-1 truncate text-[13px]">{c.name}</span>
+                  <span className="mono shrink-0 text-[12.5px] text-bone-100">{formatPrice(c.price)}</span>
+                  {c.change != null ? (
+                    <Delta value={c.change} className="w-11 shrink-0 justify-end" />
+                  ) : (
+                    <span className="w-11 shrink-0" />
+                  )}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="py-10 text-center text-[13px] text-bone-500">No data yet.</p>
+          )}
+        </Panel>
+
+        <Panel className="reveal p-5 xl:col-span-3" style={{ animationDelay: "320ms" }}>
+          <PanelHead
+            eyebrow="24h"
+            title="Market Movers"
             action={<TrendingUp size={15} strokeWidth={1.75} className="text-gold-400" />}
           />
           {movers.length > 0 ? (
-            <ul className="flex flex-col gap-3.5">
-              {movers.map((c) => (
-                <li key={c.id} className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.icon} alt="" className="h-6 w-6 shrink-0 object-contain" loading="lazy" />
-                    <span className="truncate text-[13px] text-bone-200">{c.name}</span>
-                  </div>
-                  <Delta value={c.change as number} />
-                </li>
-              ))}
-            </ul>
+            <MoversBars items={movers} />
           ) : (
-            <p className="py-8 text-center text-[13px] text-bone-500">No swing data yet.</p>
+            <p className="py-10 text-center text-[13px] text-bone-500">No swing data yet.</p>
           )}
         </Panel>
+      </div>
 
-        {/* tracker list */}
-        <Panel className="reveal flex flex-col p-6" style={{ animationDelay: "320ms" }}>
-          <PanelHead eyebrow="Uniques" title="Your List" action={tracked.length > 0 ? <MoreLink href="/uniques" label="Manage" /> : undefined} />
+      {/* zone 3 — tracker + traded flow */}
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <Panel className="reveal flex flex-col p-5 xl:col-span-4" style={{ animationDelay: "390ms" }}>
+          <PanelHead
+            eyebrow="Uniques"
+            title="Your List"
+            action={tracked.length > 0 ? <MoreLink href="/uniques" label="Manage" /> : undefined}
+          />
           {tracked.length > 0 ? (
             <ul className="flex flex-col gap-2.5">
-              {tracked.slice(0, 6).map((t) => (
+              {tracked.slice(0, 7).map((t) => (
                 <li key={t.itemId + t.name} className="flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[t.status])} />
                     <span className="t-unique truncate text-[13px]">{t.name}</span>
                   </span>
-                  <span className="mono text-[9.5px] uppercase tracking-wider text-bone-500">{t.status}</span>
+                  <span className="mono shrink-0 text-[9.5px] uppercase tracking-wider text-bone-500">
+                    {t.status}
+                  </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center py-4 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
               <div className="mb-3 grid h-12 w-12 place-items-center rounded-full border border-gold-700/30 bg-ink-900/50">
                 <Gem size={20} strokeWidth={1.5} className="text-gold-400" />
               </div>
               <div className="font-display text-[14px] text-bone-200">Nothing on the hunt yet</div>
-              <p className="mt-1.5 max-w-[22ch] text-[12.5px] text-bone-500">
+              <p className="mt-1.5 max-w-[24ch] text-[12.5px] text-bone-500">
                 Mark uniques as have, want, or chasing in the Reliquary.
               </p>
               <Link
@@ -282,29 +276,34 @@ export default async function Home() {
           )}
         </Panel>
 
-        {ai && (
-        <Panel className="reveal p-6 lg:col-span-2" style={{ animationDelay: "390ms" }}>
+        <Panel className="reveal p-5 xl:col-span-8" style={{ animationDelay: "460ms" }}>
           <PanelHead
-            eyebrow="Oracle"
-            title="Ask the current patch"
-            action={<Sparkles size={15} strokeWidth={1.75} className="text-gold-400" />}
+            eyebrow="Exchange Flow"
+            title="Most Traded"
+            note="highest-volume currency pairs"
+            action={<Activity size={15} strokeWidth={1.75} className="text-gold-400" />}
           />
-          <p className="mb-4 text-[13px] leading-relaxed text-bone-400">
-            The Oracle fetches live data per question, so it answers from the current patch instead of stale
-            memory. Ask what changed, what is worth chasing, or what to upgrade next.
-          </p>
-          <Link
-            href="/codex?ask=What%20should%20I%20craft%20with%205%20divine%3F"
-            className="group flex items-center justify-between gap-3 rounded-[5px] border border-gold-700/25 bg-ink-900/50 px-4 py-3 transition-colors hover:border-gold-500/40"
-          >
-            <span className="mono text-[12.5px] text-bone-400 group-hover:text-bone-200">
-              What should I craft with 5 divine?
-            </span>
-            <ArrowUpRight size={15} strokeWidth={2} className="text-bone-600 group-hover:text-gold-300" />
-          </Link>
+          {pulse && pulse.topPairs.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+              {pulse.topPairs.slice(0, 8).map((p, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 rounded-[6px] border border-gold-700/20 bg-ink-900/40 px-2.5 py-2"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.one.icon} alt="" className="h-5 w-5 shrink-0 object-contain" loading="lazy" />
+                  <span className="text-bone-700">/</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.two.icon} alt="" className="h-5 w-5 shrink-0 object-contain" loading="lazy" />
+                  <span className="mono ml-auto text-[10px] text-bone-500">{compact(p.volume)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-10 text-center text-[13px] text-bone-500">Exchange flow is warming up.</p>
+          )}
         </Panel>
-        )}
       </div>
-    </>
+    </div>
   );
 }

@@ -3,9 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Search, RefreshCw } from "lucide-react";
-import { PROFILE } from "@/lib/config";
+import { LeagueSwitcher } from "./LeagueSwitcher";
 
-export function Topbar({ aiEnabled }: { aiEnabled: boolean }) {
+export function Topbar({
+  aiEnabled,
+  current,
+  leagues,
+}: {
+  aiEnabled: boolean;
+  current: string;
+  leagues: { value: string; shortName: string; isCurrent: boolean }[];
+}) {
   const router = useRouter();
   const [ask, setAsk] = useState("");
 
@@ -18,16 +26,8 @@ export function Topbar({ aiEnabled }: { aiEnabled: boolean }) {
   return (
     <header className="sticky top-0 z-20 hidden border-b border-gold-700/20 bg-obsidian/80 backdrop-blur-md lg:block">
       <div className="mx-auto flex h-16 w-full max-w-[1520px] items-center gap-4 px-5 sm:px-8">
-        {/* league badge */}
-        <div className="hidden items-center gap-2.5 sm:flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-verdigris-400 ember" />
-          <span className="eyebrow text-bone-400">
-            League <span className="text-gold-400">{PROFILE.league}</span>
-          </span>
-          <span className="mono rounded border border-gold-700/30 px-1.5 py-0.5 text-[10px] text-gold-300">
-            patch {PROFILE.patch}
-          </span>
-        </div>
+        {/* league switcher */}
+        <LeagueSwitcher current={current} leagues={leagues} />
 
         {/* ask the oracle */}
         {aiEnabled ? (

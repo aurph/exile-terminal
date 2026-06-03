@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cached, type Cached } from "./cache";
 import { pctChange } from "./format";
+import { cookies } from "next/headers";
 
 /**
  * Adapter for the poe2scout.com public API (PoE2-native price data).
@@ -200,18 +201,32 @@ function normUnique(u: z.infer<typeof UniqueZ>): Unique {
 }
 
 /* ---------------------------------- queries ---------------------------------- */
-export async function getCurrentLeague(): Promise<League> {
+async function leagueList() {
   const { data } = await cached("leagues", 6 * 3600_000, () =>
     api(z.array(LeagueZ), `/${REALM}/Leagues`)
   );
-  const current =
+  return data;
+}
+
+export async function getLeagues(): Promise<
+  { value: string; shortName: string; isCurrent: boolean }[]
+> {
+  const data = await leagueList();
+  return data.map((l) => ({ value: l.Value, shortName: l.ShortName, isCurrent: l.IsCurrent }));
+}
+
+export async function getCurrentLeague(): Promise<League> {
+  const data = await leagueList();
+  const override = (await cookies()).get("poe_league")?.value;
+  const chosen =
+    (override ? data.find((l) => l.Value === override) : undefined) ??
     data.find((l) => l.IsCurrent && !/^HC\b/i.test(l.Value)) ??
     data.find((l) => l.IsCurrent) ??
     data[0];
   return {
-    value: current.Value,
-    shortName: current.ShortName,
-    divinePrice: current.DivinePrice ?? null,
+    value: chosen.Value,
+    shortName: chosen.ShortName,
+    divinePrice: chosen.DivinePrice ?? null,
   };
 }
 

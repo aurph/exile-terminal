@@ -3,10 +3,15 @@ import { Topbar } from "./Topbar";
 import { MobileNav } from "./MobileNav";
 import { getSession } from "@/lib/session";
 import { aiEnabled } from "@/lib/ai";
+import { getCurrentLeague, getLeagues } from "@/lib/poe2scout";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   const ai = aiEnabled();
+  const [leagueInfo, leagues] = await Promise.all([
+    getCurrentLeague().catch(() => null),
+    getLeagues().catch(() => [] as Awaited<ReturnType<typeof getLeagues>>),
+  ]);
 
   return (
     <>
@@ -16,7 +21,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar account={session.account} character={session.character} aiEnabled={ai} />
         <MobileNav account={session.account} aiEnabled={ai} />
         <div className="lg:pl-[264px]">
-          <Topbar aiEnabled={ai} />
+          <Topbar aiEnabled={ai} current={leagueInfo?.value ?? ""} leagues={leagues} />
           <main className="mx-auto w-full max-w-[1520px] px-5 py-7 sm:px-8">{children}</main>
           <footer className="mx-auto w-full max-w-[1520px] px-5 pb-10 pt-2 sm:px-8">
             <div className="mb-3 rule" />

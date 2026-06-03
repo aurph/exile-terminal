@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -26,4 +27,12 @@ export async function clearAccount(): Promise<void> {
   c.delete("poe_account");
   c.delete("poe_character");
   redirect("/account");
+}
+
+export async function setLeague(formData: FormData): Promise<void> {
+  const league = String(formData.get("league") ?? "").trim();
+  const c = await cookies();
+  if (league) c.set("poe_league", league, COOKIE);
+  else c.delete("poe_league");
+  revalidatePath("/", "layout");
 }

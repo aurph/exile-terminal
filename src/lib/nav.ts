@@ -4,6 +4,7 @@ import {
   Swords,
   Coins,
   Gem,
+  Library,
   BookOpenText,
   ScrollText,
   type LucideIcon,
@@ -22,6 +23,7 @@ export const NAV: NavItem[] = [
   { href: "/builds", label: "Build Guides", icon: Swords, blurb: "Meta and visual build cards" },
   { href: "/market", label: "Market", icon: Coins, blurb: "Currency and item economy" },
   { href: "/uniques", label: "Uniques", icon: Gem, blurb: "Catalog and your chase list" },
+  { href: "/collection", label: "Collection", icon: Library, blurb: "How much you own" },
   { href: "/codex", label: "Codex", icon: BookOpenText, blurb: "Skills, mechanics, and Ask" },
   { href: "/changes", label: "0.5 Changes", icon: ScrollText, blurb: "What changed from 0.4" },
 ];

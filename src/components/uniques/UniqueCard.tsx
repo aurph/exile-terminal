@@ -51,6 +51,7 @@ export function UniqueCard({
           status: next,
           itemId: unique.itemId,
           name: unique.name,
+          category: unique.category,
         }),
       });
       if (!res.ok) setStatus(prev);

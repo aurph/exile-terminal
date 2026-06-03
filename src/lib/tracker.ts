@@ -11,6 +11,7 @@ export type TrackEntry = {
   status: TrackStatus;
   itemId: number;
   name: string;
+  category?: string;
   updatedAt: number;
 };
 export type Tracker = Record<string, TrackEntry>;
@@ -42,7 +43,7 @@ export async function setStatus(
   uid: string,
   uniqueId: number,
   status: TrackStatus | null,
-  meta?: { itemId: number; name: string }
+  meta?: { itemId: number; name: string; category?: string }
 ): Promise<Tracker> {
   const t = await read(uid);
   const key = String(uniqueId);
@@ -53,6 +54,7 @@ export async function setStatus(
       status,
       itemId: meta?.itemId ?? t[key]?.itemId ?? 0,
       name: meta?.name ?? t[key]?.name ?? "",
+      category: meta?.category ?? t[key]?.category,
       updatedAt: Date.now(),
     };
   }

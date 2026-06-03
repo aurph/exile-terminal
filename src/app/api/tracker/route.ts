@@ -15,6 +15,7 @@ const Body = z.object({
   status: z.enum(["have", "want", "chasing"]).nullable(),
   itemId: z.number().optional(),
   name: z.string().optional(),
+  category: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -38,8 +39,8 @@ export async function POST(req: Request) {
   }
 
   const meta =
-    parsed.itemId != null || parsed.name != null
-      ? { itemId: parsed.itemId ?? 0, name: parsed.name ?? "" }
+    parsed.itemId != null || parsed.name != null || parsed.category != null
+      ? { itemId: parsed.itemId ?? 0, name: parsed.name ?? "", category: parsed.category }
       : undefined;
   const tracker = await setStatus(uid, parsed.uniqueId, parsed.status, meta);
   return NextResponse.json(tracker[String(parsed.uniqueId)] ?? null);

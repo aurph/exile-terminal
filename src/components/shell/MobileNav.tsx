@@ -12,10 +12,11 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function MobileNav({ account }: { account: string | null }) {
+export function MobileNav({ account, aiEnabled }: { account: string | null; aiEnabled: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const close = () => setOpen(false);
+  const items = NAV.filter((i) => !i.ai || aiEnabled);
 
   return (
     <>
@@ -37,7 +38,7 @@ export function MobileNav({ account }: { account: string | null }) {
       {open && (
         <div className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-obsidian/96 backdrop-blur-md lg:hidden">
           <nav className="flex flex-col gap-1 p-4">
-            {NAV.map((item) => {
+            {items.map((item) => {
               const active = isActive(pathname, item.href);
               const Icon = item.icon;
               return (

@@ -15,15 +15,16 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   blurb: string;
+  ai?: boolean;
 };
 
 export const NAV: NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard, blurb: "Your exile at a glance" },
   { href: "/character", label: "Character", icon: UserRound, blurb: "Your gear, stats, passives" },
-  { href: "/builds", label: "Build Guides", icon: Swords, blurb: "Meta and visual build cards" },
+  { href: "/builds", label: "Build Guides", icon: Swords, blurb: "Meta and visual build cards", ai: true },
   { href: "/market", label: "Market", icon: Coins, blurb: "Currency and item economy" },
   { href: "/uniques", label: "Uniques", icon: Gem, blurb: "Catalog and your chase list" },
   { href: "/collection", label: "Collection", icon: Library, blurb: "How much you own" },
-  { href: "/codex", label: "Codex", icon: BookOpenText, blurb: "Skills, mechanics, and Ask" },
-  { href: "/changes", label: "0.5 Changes", icon: ScrollText, blurb: "What changed from 0.4" },
+  { href: "/codex", label: "Codex", icon: BookOpenText, blurb: "Skills, mechanics, and Ask", ai: true },
+  { href: "/changes", label: "0.5 Changes", icon: ScrollText, blurb: "What changed from 0.4", ai: true },
 ];

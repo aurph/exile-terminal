@@ -6,6 +6,7 @@ import { Delta } from "@/components/ui/Delta";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { PROFILE } from "@/lib/config";
 import { getSession } from "@/lib/session";
+import { aiEnabled } from "@/lib/ai";
 import { getCurrencies, type Currency } from "@/lib/poe2scout";
 import { getTracker, type TrackStatus } from "@/lib/tracker";
 import { formatPrice, timeAgo } from "@/lib/format";
@@ -42,6 +43,7 @@ const STATUS_DOT: Record<TrackStatus, string> = {
 
 export default async function Home() {
   const session = await getSession();
+  const ai = aiEnabled();
 
   let econ: Awaited<ReturnType<typeof getCurrencies>> | null = null;
   try {
@@ -124,7 +126,7 @@ export default async function Home() {
           </p>
         </Panel>
 
-        {/* patch digest */}
+        {ai && (
         <Panel className="reveal p-6" style={{ animationDelay: "110ms" }}>
           <PanelHead eyebrow="Patch Notes" title="What changed" action={<MoreLink href="/changes" label="Explorer" />} />
           <p className="text-[13px] leading-relaxed text-bone-400">
@@ -143,6 +145,7 @@ export default async function Home() {
             ))}
           </ul>
         </Panel>
+        )}
 
         {/* economy — live */}
         <Panel className="reveal p-6 lg:col-span-2" style={{ animationDelay: "180ms" }}>
@@ -243,7 +246,7 @@ export default async function Home() {
           )}
         </Panel>
 
-        {/* oracle invite */}
+        {ai && (
         <Panel className="reveal p-6 lg:col-span-2" style={{ animationDelay: "390ms" }}>
           <PanelHead
             eyebrow="Oracle"
@@ -264,6 +267,7 @@ export default async function Home() {
             <ArrowUpRight size={15} strokeWidth={2} className="text-bone-600 group-hover:text-gold-300" />
           </Link>
         </Panel>
+        )}
       </div>
     </>
   );

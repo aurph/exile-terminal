@@ -14,11 +14,14 @@ function isActive(pathname: string, href: string) {
 export function Sidebar({
   account,
   character,
+  aiEnabled,
 }: {
   account: string | null;
   character: string | null;
+  aiEnabled: boolean;
 }) {
   const pathname = usePathname();
+  const items = NAV.filter((i) => !i.ai || aiEnabled);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-gold-700/20 bg-ink-950/70 backdrop-blur-md lg:flex">
@@ -38,7 +41,7 @@ export function Sidebar({
       {/* nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-5">
         <ul className="flex flex-col gap-1">
-          {NAV.map((item) => {
+          {items.map((item) => {
             const active = isActive(pathname, item.href);
             const Icon = item.icon;
             return (

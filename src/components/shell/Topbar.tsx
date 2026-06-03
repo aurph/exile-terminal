@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Search, RefreshCw } from "lucide-react";
 import { PROFILE } from "@/lib/config";
 
-export function Topbar() {
+export function Topbar({ aiEnabled }: { aiEnabled: boolean }) {
   const router = useRouter();
   const [ask, setAsk] = useState("");
 
@@ -30,6 +30,7 @@ export function Topbar() {
         </div>
 
         {/* ask the oracle */}
+        {aiEnabled ? (
         <form onSubmit={submit} className="ml-auto flex w-full max-w-md items-center">
           <div className="group flex w-full items-center gap-2.5 rounded-[5px] border border-gold-700/25 bg-ink-900/60 px-3 py-2 transition-colors focus-within:border-gold-500/50">
             <Search size={15} strokeWidth={1.75} className="text-bone-500 group-focus-within:text-gold-400" />
@@ -44,6 +45,9 @@ export function Topbar() {
             </kbd>
           </div>
         </form>
+        ) : (
+          <div className="ml-auto" />
+        )}
 
         {/* sync */}
         <button

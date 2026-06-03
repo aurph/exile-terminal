@@ -1,61 +1,88 @@
 <div align="center">
 
-# Exile Terminal
+<img src="docs/exalted-orb.png" width="128" alt="Exile Terminal" />
 
-A personalized, single-user **Path of Exile 2** command center: live economy, a unique-item tracker, and a tool-calling AI Oracle, in a dark "Arcane Ledger" interface.
+<h1>Exile Terminal</h1>
 
-Next.js 16 · React 19 · Tailwind v4 · TypeScript
+<p>
+<strong>A command terminal for Path of Exile 2.</strong><br/>
+Live economy, a unique-item tracker, a 0.5 campaign route to the endgame, and your
+character at a glance — in a dark "Arcane Ledger" interface.
+</p>
+
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 
 </div>
 
-## Areas
-- **Overview**: live economy, market movers, your tracker, and the current league at a glance.
-- **Character**: your gear, stats, and passive count from GGG (needs account access, see below).
-- **Build Guides**: ask the Oracle what is winning; web-grounded and priced against live data.
-- **Market**: full currency exchange with sparklines, categories, search, and pagination.
-- **Uniques**: the full catalog with live prices, plus a have / want / chasing tracker.
-- **Codex (Oracle)**: a tool-calling assistant over live prices, your tracker, and web search.
-- **Patch Changes**: ask the Oracle what changed in the current patch.
+<p align="center">
+  <img src="docs/shot-overview.png" width="860" alt="Exile Terminal overview" />
+</p>
+
+## What's inside
+
+- **Overview** — live economy, market movers, campaign progress, and your unique tracker, all on one screen.
+- **Character** — paste a Path of Building 2 export and get a defenses radar, vitals, and a weak-spot audit. No login; it stays in your browser.
+- **Campaign** — the 0.5 speed route to maps as visual act cards with clickable milestones (both Ascendancy trials, key pickups, every act reward). Progress saves per browser.
+- **Market** — the full currency exchange with sparklines, categories, search, and pagination.
+- **Uniques** — the whole catalog with live prices, plus a have / want / chasing tracker.
+- **Oracle** *(optional)* — a tool-calling Claude assistant over live prices, your tracker, and web search. Off unless you add an API key; it powers the Build Guides, Codex, and 0.5 Changes pages.
+
+<p align="center">
+  <img src="docs/shot-campaign.png" width="860" alt="Campaign tracker" />
+</p>
 
 ## Data sources
-- **poe2scout.com**: live currency and unique prices. No key needed.
-- **Anthropic Claude API**: the Oracle and the Oracle-powered pages. Needs `ANTHROPIC_API_KEY`.
-- **GGG character-window endpoints** (realm=poe2): the Character page. Needs a public profile or `POESESSID`.
-- **Web search**: a server-side tool the Oracle uses for current-patch facts.
+
+- **[poe2scout.com](https://poe2scout.com)** — live currency and unique prices. No key needed.
+- **Path of Building 2** — character import. Paste an export code or `pobb.in` link; PoB2 has already computed the stats, so nothing is logged in to GGG.
+- **Anthropic Claude API** *(optional)* — the Oracle and the Oracle-powered pages. Needs `ANTHROPIC_API_KEY`.
+- **Web search** — a server-side tool the Oracle uses for current-patch facts.
 
 ## Run locally
+
 ```bash
 npm install
 npm run dev      # http://localhost:3000
 ```
-The app is usable with no secrets at all: Overview, Market, and Uniques are live out of the box. The Oracle and Character areas light up once you add the config below.
+
+The app is fully usable with **no secrets at all**: Overview, Character, Campaign, Market, and Uniques are live out of the box. The Oracle pages light up once you add a key.
 
 ## Configuration
+
 Create `.env.local` (gitignored), or set these in your deployment environment:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | for AI features | Powers the Oracle, Build Guides, and Patch Changes. Get one at console.anthropic.com. |
+| `ANTHROPIC_API_KEY` | for AI features | Powers the Oracle, Build Guides, and 0.5 Changes. Get one at console.anthropic.com. |
 | `ORACLE_MODEL` | optional | Oracle model. Defaults to `claude-opus-4-8`. Use `claude-sonnet-4-6` or `claude-haiku-4-5` to cut cost. |
-| `POESESSID` | optional | pathofexile.com session cookie, for the Character page when your profile is private. |
-| `NEXT_PUBLIC_POE_ACCOUNT` | optional | Account name. Defaults to `aurph`. |
-| `NEXT_PUBLIC_POE_CHARACTER` | optional | Character name. Defaults to `alangreenspan`. |
+| `NEXT_PUBLIC_POE_ACCOUNT` | optional | Default account label. |
+| `NEXT_PUBLIC_POE_CHARACTER` | optional | Default character label. |
 | `NEXT_PUBLIC_POE_LEAGUE` | optional | Fallback league label. The live league is detected automatically. |
 
 ### Connecting your character
-The Character page reads GGG's public character endpoints. Either set your profile to public at pathofexile.com privacy settings (simplest), or add `POESESSID` to keep it private.
+
+Open Path of Building 2, build or import your character, then **Import/Export → Generate** and copy the code (or a `pobb.in` link). Paste it into the Character page. Because PoB2 pre-computes the stats, the radar reads them exactly, and there is no GGG sign-in.
 
 ## Deploy
+
 Any Node host works:
+
 ```bash
 npm install
 npm run build
 npm start
 ```
-Set the environment variables above in your host's environment or secrets store.
+
+Set the environment variables above in your host's secrets store.
 
 ## Notes
-- Single user, no login. External data is cached in-process with a short TTL and falls back to the last good value on a failed fetch.
+
+- Single visitor identity by cookie, no login. Your tracker and campaign progress save per browser.
+- External data is cached in-process with a short TTL and falls back to the last good value on a failed fetch.
+- Not affiliated with or endorsed by Grinding Gear Games. Path of Exile and Path of Exile 2 are trademarks of Grinding Gear Games. The orb mark is an original rendition, not GGG artwork.
 
 ---
 

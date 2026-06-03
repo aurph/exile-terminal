@@ -27,7 +27,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Exile Terminal · Path of Exile 2",
   description:
-    "A personal command terminal for Path of Exile 2: economy, builds, uniques, and a current-patch Oracle.",
+    "A command terminal for Path of Exile 2: live economy, uniques, a 0.5 campaign route, and your character at a glance.",
 };
 
 export default function RootLayout({

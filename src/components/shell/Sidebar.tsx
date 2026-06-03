@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { Settings } from "lucide-react";
 import { NAV } from "@/lib/nav";
+import { ExaltedOrb } from "@/components/brand/ExaltedOrb";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -27,7 +28,9 @@ export function Sidebar({
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-gold-700/20 bg-ink-950/70 backdrop-blur-md lg:flex">
       {/* brand */}
       <Link href="/" className="group flex items-center gap-3 px-6 pb-5 pt-6">
-        <Sigil />
+        <span className="grid h-9 w-9 shrink-0 place-items-center transition-transform group-hover:scale-105">
+          <ExaltedOrb size={34} />
+        </span>
         <div className="leading-none">
           <div className="foil font-display text-[15px] font-700 tracking-[0.14em]">
             EXILE TERMINAL
@@ -120,30 +123,5 @@ export function Sidebar({
         </a>
       </div>
     </aside>
-  );
-}
-
-function Sigil() {
-  return (
-    <span className="relative grid h-9 w-9 place-items-center">
-      <span className="sigil-ring absolute inset-0 rounded-full" />
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M12 1.5 L21 7 V17 L12 22.5 L3 17 V7 Z"
-          stroke="url(#g)"
-          strokeWidth="1.1"
-          strokeLinejoin="round"
-        />
-        <path d="M12 5.5 L12 18.5 M6.5 8.5 L17.5 15.5 M17.5 8.5 L6.5 15.5" stroke="url(#g)" strokeWidth="0.8" opacity="0.65" />
-        <circle cx="12" cy="12" r="2.4" stroke="url(#g)" strokeWidth="1" />
-        <defs>
-          <linearGradient id="g" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#f1dca6" />
-            <stop offset="0.6" stopColor="#c2974a" />
-            <stop offset="1" stopColor="#7c2018" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </span>
   );
 }

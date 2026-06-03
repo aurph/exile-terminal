@@ -293,3 +293,57 @@ export async function getUniques(category: string, opts: ListOpts = {}): Promise
     items: data.Items.map(normUnique),
   };
 }
+
+/* ---------------------------------- exchange ---------------------------------- */
+const ExchangeSnapshotZ = z
+  .object({
+    Volume: z.union([z.string(), z.number()]).optional(),
+    MarketCap: z.union([z.string(), z.number()]).optional(),
+  })
+  .passthrough();
+
+const PairCurrencyZ = z
+  .object({ ApiId: z.string(), Text: z.string(), IconUrl: z.string() })
+  .passthrough();
+const PairZ = z
+  .object({
+    Volume: z.union([z.string(), z.number()]).optional(),
+    CurrencyOne: PairCurrencyZ,
+    CurrencyTwo: PairCurrencyZ,
+  })
+  .passthrough();
+
+export type ExchangePulse = {
+  volume: number;
+  marketCap: number;
+  topPairs: { one: { name: string; icon: string }; two: { name: string; icon: string }; volume: number }[];
+  fetchedAt: number;
+  stale: boolean;
+};
+
+const toNum = (v: unknown) => (typeof v === "number" ? v : parseFloat(String(v ?? "0")) || 0);
+
+export async function getExchangePulse(): Promise<ExchangePulse | null> {
+  const league = await getCurrentLeague();
+  try {
+    const { data, fetchedAt, stale } = await cached(`pulse:${league.value}`, 15 * 60_000, async () => {
+      const base = `/${REALM}/Leagues/${encodeURIComponent(league.value)}`;
+      const [snap, pairs] = await Promise.all([
+        api(ExchangeSnapshotZ, `${base}/ExchangeSnapshot`),
+        api(z.array(PairZ), `${base}/SnapshotPairs`),
+      ]);
+      const top = [...pairs]
+        .sort((a, b) => toNum(b.Volume) - toNum(a.Volume))
+        .slice(0, 8)
+        .map((p) => ({
+          one: { name: p.CurrencyOne.Text, icon: p.CurrencyOne.IconUrl },
+          two: { name: p.CurrencyTwo.Text, icon: p.CurrencyTwo.IconUrl },
+          volume: toNum(p.Volume),
+        }));
+      return { volume: toNum(snap.Volume), marketCap: toNum(snap.MarketCap), topPairs: top };
+    });
+    return { ...data, fetchedAt, stale };
+  } catch {
+    return null;
+  }
+}

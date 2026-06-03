@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, TriangleAlert } from "lucide-react";
-import { getCurrencies, getCategories, type Currency, type Category } from "@/lib/poe2scout";
+import {
+  getCurrencies,
+  getCategories,
+  getExchangePulse,
+  type Currency,
+  type Category,
+  type ExchangePulse,
+} from "@/lib/poe2scout";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Panel } from "@/components/ui/Panel";
+import { Panel, PanelHead } from "@/components/ui/Panel";
 import { Delta } from "@/components/ui/Delta";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { formatPrice, timeAgo } from "@/lib/format";
@@ -45,6 +52,7 @@ export default async function MarketPage({
     );
   }
 
+  const pulse = await getExchangePulse().catch(() => null);
   const items = [...data.items].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
   const categories = cats?.currency ?? [];
 
@@ -63,6 +71,8 @@ export default async function MarketPage({
           </div>
         }
       />
+
+      {pulse && <MarketPulse pulse={pulse} />}
 
       {/* category tabs */}
       <div className="mb-4 flex flex-wrap gap-1.5">
@@ -183,5 +193,52 @@ function PageLink({
       {dir}
       {dir === "next" && <ArrowRight size={13} />}
     </Link>
+  );
+}
+
+function MarketPulse({ pulse }: { pulse: ExchangePulse }) {
+  const big = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : formatPrice(n, ""));
+  return (
+    <Panel className="mb-4 p-5">
+      <PanelHead
+        eyebrow="Market Pulse"
+        title="Currency Exchange Flow"
+        note={`live · ${timeAgo(pulse.fetchedAt)}`}
+      />
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="rounded-[5px] border border-gold-700/15 bg-ink-900/40 px-3 py-2.5">
+          <div className="eyebrow text-[9px] text-bone-600">Exchange Volume</div>
+          <div className="mono mt-1 text-lg text-bone-100">
+            {big(pulse.volume)} <span className="text-[11px] text-bone-500">ex</span>
+          </div>
+        </div>
+        <div className="rounded-[5px] border border-gold-700/15 bg-ink-900/40 px-3 py-2.5">
+          <div className="eyebrow text-[9px] text-bone-600">Market Cap</div>
+          <div className="mono mt-1 text-lg text-bone-100">
+            {big(pulse.marketCap)} <span className="text-[11px] text-bone-500">ex</span>
+          </div>
+        </div>
+      </div>
+      <div className="eyebrow mb-2 text-bone-500">Most traded</div>
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {pulse.topPairs.map((p, i) => (
+          <li
+            key={i}
+            className="flex items-center justify-between gap-2 rounded-[5px] border border-gold-700/15 bg-ink-900/40 px-3 py-2"
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.one.icon} alt="" className="h-5 w-5 shrink-0 object-contain" loading="lazy" />
+              <span className="t-currency truncate text-[11.5px]">{p.one.name}</span>
+              <span className="shrink-0 text-bone-600">&harr;</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.two.icon} alt="" className="h-5 w-5 shrink-0 object-contain" loading="lazy" />
+              <span className="t-currency truncate text-[11.5px]">{p.two.name}</span>
+            </span>
+            <span className="mono shrink-0 text-[11px] text-bone-500">{formatPrice(p.volume, "")}</span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }

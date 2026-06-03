@@ -9,6 +9,8 @@ import { getSession } from "@/lib/session";
 import { aiEnabled } from "@/lib/ai";
 import { getCurrencies, type Currency } from "@/lib/poe2scout";
 import { getTracker, type TrackStatus } from "@/lib/tracker";
+import { getProgress } from "@/lib/progress-store";
+import { CAMPAIGN, TOTAL_MILESTONES } from "@/lib/campaign";
 import { formatPrice, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
@@ -73,6 +75,18 @@ export default async function Home() {
   const tracked = Object.values(tracker).sort((a, b) => b.updatedAt - a.updatedAt);
   const heroLetter = (session.account ?? "?").charAt(0).toUpperCase();
 
+  let progress: string[] = [];
+  try {
+    progress = await getProgress(session.uid);
+  } catch {
+    progress = [];
+  }
+  const campSet = new Set(progress);
+  const campDone = progress.length;
+  const campPct = Math.round((campDone / TOTAL_MILESTONES) * 100);
+  const currentAct = CAMPAIGN.find((a) => !a.milestones.every((m) => campSet.has(m.id)));
+  const campLabel = currentAct ? `at ${currentAct.name}` : "Endgame reached";
+
   return (
     <>
       <PageHeader
@@ -81,7 +95,7 @@ export default async function Home() {
         sub={
           session.account
             ? `Your command terminal for Path of Exile 2. Tracking ${session.character ?? "your characters"} on patch ${PROFILE.patch}.`
-            : "Live economy, a unique tracker, and an Oracle that knows the current patch. Connect an account to personalize it."
+            : "Live economy, a unique tracker, and a 0.5 campaign route to the endgame. Connect an account to personalize it."
         }
       />
 
@@ -126,8 +140,30 @@ export default async function Home() {
           </p>
         </Panel>
 
+        {/* campaign progress — always available */}
+        <Panel className="reveal flex flex-col p-6" style={{ animationDelay: "110ms" }}>
+          <PanelHead eyebrow="Campaign" title="The Fast Road" action={<MoreLink href="/story" label="Open" />} />
+          <div className="flex items-end justify-between gap-3">
+            <div className="foil font-display text-[34px] leading-none">{campPct}%</div>
+            <div className="text-right">
+              <div className="mono text-[12.5px] text-bone-300">{campDone} / {TOTAL_MILESTONES}</div>
+              <div className="mono text-[10px] text-bone-600">{campLabel}</div>
+            </div>
+          </div>
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink-700/60">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-gold-600 to-gold-300"
+              style={{ width: `${campPct}%` }}
+            />
+          </div>
+          <p className="mt-4 text-[12.5px] leading-relaxed text-bone-500">
+            The 0.5 speed route to maps: both Ascendancy trials, the high-value pickups, and every act
+            reward in order.
+          </p>
+        </Panel>
+
         {ai && (
-        <Panel className="reveal p-6" style={{ animationDelay: "110ms" }}>
+        <Panel className="reveal p-6" style={{ animationDelay: "170ms" }}>
           <PanelHead eyebrow="Patch Notes" title="What changed" action={<MoreLink href="/changes" label="Explorer" />} />
           <p className="text-[13px] leading-relaxed text-bone-400">
             Ask the Oracle what changed in the current patch. It searches the live notes and explains any

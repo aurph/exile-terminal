@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   UserRound,
+  Footprints,
   Swords,
   Coins,
   Gem,
@@ -21,6 +22,7 @@ export type NavItem = {
 export const NAV: NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutDashboard, blurb: "Your exile at a glance" },
   { href: "/character", label: "Character", icon: UserRound, blurb: "Your gear, stats, passives" },
+  { href: "/story", label: "Campaign", icon: Footprints, blurb: "0.5 leveling route to maps" },
   { href: "/builds", label: "Build Guides", icon: Swords, blurb: "Meta and visual build cards", ai: true },
   { href: "/market", label: "Market", icon: Coins, blurb: "Currency and item economy" },
   { href: "/uniques", label: "Uniques", icon: Gem, blurb: "Catalog and your chase list" },

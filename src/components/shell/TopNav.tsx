@@ -40,7 +40,7 @@ export function TopNav({
             </span>
             <span className="foil font-display text-[14px] font-700 tracking-[0.18em]">EXILE TERMINAL</span>
             <span className="mono hidden text-[9px] uppercase tracking-[0.2em] text-bone-700 xl:block">
-              // Wraeclast Ledger
+              {"// Wraeclast Ledger"}
             </span>
           </Link>
 

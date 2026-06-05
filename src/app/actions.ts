@@ -3,9 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { randomUUID } from "crypto";
-import { parsePob } from "@/lib/pob";
-import { saveBuild, clearBuild } from "@/lib/build-store";
+import { parsePob, type ParsedBuild } from "@/lib/pob";
 
 const YEAR = 60 * 60 * 24 * 365;
 const COOKIE = { sameSite: "lax", maxAge: YEAR, path: "/" } as const;
@@ -14,9 +12,6 @@ export async function setAccount(formData: FormData): Promise<void> {
   const account = String(formData.get("account") ?? "").trim();
   const character = String(formData.get("character") ?? "").trim();
   const c = await cookies();
-  if (!c.get("poe_uid")) {
-    c.set("poe_uid", randomUUID(), { ...COOKIE, httpOnly: true });
-  }
   if (account) c.set("poe_account", account, COOKIE);
   else c.delete("poe_account");
   if (character) c.set("poe_character", character, COOKIE);
@@ -41,10 +36,16 @@ export async function setLeague(formData: FormData): Promise<void> {
 
 const POB_UA = "poe2-assistant (contact: jacksch45@gmail.com)";
 
+/**
+ * Parses a PoB2 code (or pobb.in link) server-side — the zlib inflate and the
+ * cross-origin pobb.in fetch both need the server — and returns the parsed
+ * build to the client, which stores it in localStorage. The server keeps
+ * nothing, so the build survives redeploys with the visitor, not the host.
+ */
 export async function importBuild(
-  _prev: { error?: string } | undefined,
+  _prev: { error?: string; build?: ParsedBuild } | undefined,
   formData: FormData
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; build?: ParsedBuild }> {
   try {
     let input = String(formData.get("pob") ?? "").trim();
     if (!input) return { error: "Paste a Path of Building code or a pobb.in link." };
@@ -59,26 +60,10 @@ export async function importBuild(
       input = (await res.text()).trim();
     }
 
-    const build = parsePob(input);
-    const c = await cookies();
-    let uid = c.get("poe_uid")?.value;
-    if (!uid) {
-      uid = randomUUID();
-      c.set("poe_uid", uid, { ...COOKIE, httpOnly: true });
-    }
-    await saveBuild(uid, build);
-    revalidatePath("/character");
-    return {};
+    return { build: parsePob(input) };
   } catch {
     return {
       error: "Could not read that build. Make sure it is a valid PoB2 export code or pobb.in link.",
     };
   }
-}
-
-export async function clearBuildAction(): Promise<void> {
-  const c = await cookies();
-  const uid = c.get("poe_uid")?.value;
-  if (uid) await clearBuild(uid);
-  revalidatePath("/character");
 }

@@ -24,10 +24,10 @@ character at a glance — in a dark "Arcane Ledger" interface.
 ## What's inside
 
 - **Overview** — live economy, market movers, campaign progress, and your unique tracker, all on one screen.
-- **Character** — paste a Path of Building 2 export and get a defenses radar, vitals, and a weak-spot audit. No login; it stays in your browser.
-- **Campaign** — the 0.5 speed route to maps as visual act cards with clickable milestones (both Ascendancy trials, key pickups, every act reward). Progress saves per browser.
+- **Character** — paste a Path of Building 2 export and get a defenses radar, vitals, and a weak-spot audit. No login; the build is stored in your browser's localStorage.
+- **Campaign** — the 0.5 speed route to maps as visual act cards with clickable milestones (both Ascendancy trials, key pickups, every act reward). Progress lives in a browser cookie you own — it survives refreshes and redeploys.
 - **Market** — the full currency exchange with sparklines, categories, search, and pagination.
-- **Uniques** — the whole catalog with live prices, plus a have / want / chasing tracker.
+- **Uniques** — the whole catalog with live prices, real substring search (with cross-category hits), plus a have / want / chasing tracker.
 - **Oracle** *(optional)* — a tool-calling Claude assistant over live prices, your tracker, and web search. Off unless you add an API key; it powers the Build Guides, Codex, and 0.5 Changes pages.
 
 <p align="center">
@@ -80,8 +80,9 @@ Set the environment variables above in your host's secrets store.
 
 ## Notes
 
-- Single visitor identity by cookie, no login. Your tracker and campaign progress save per browser.
-- External data is cached in-process with a short TTL and falls back to the last good value on a failed fetch.
+- No login and no server-side user storage at all. Campaign progress and the uniques tracker are compact cookies the browser writes itself; the imported build is localStorage. Your data survives refreshes, server restarts, and redeploys because it never leaves your browser.
+- Search is done locally against cached poe2scout data (the upstream search param only matches exact full names, so the app never uses it).
+- External data is cached in-process with a short TTL, retried once on failure, and falls back to the last good value on a failed fetch.
 - Not affiliated with or endorsed by Grinding Gear Games. Path of Exile and Path of Exile 2 are trademarks of Grinding Gear Games. The orb mark is an original rendition, not GGG artwork.
 
 ---

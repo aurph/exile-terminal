@@ -1,10 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { importBuild } from "@/app/actions";
+import type { ParsedBuild } from "@/lib/pob";
 
-export function ImportForm() {
+export function ImportForm({ onImported }: { onImported: (build: ParsedBuild) => void }) {
   const [state, formAction, pending] = useActionState(importBuild, {});
+
+  // The action returns the parsed build; the parent persists it client-side.
+  useEffect(() => {
+    if (state?.build) onImported(state.build);
+  }, [state, onImported]);
+
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <textarea

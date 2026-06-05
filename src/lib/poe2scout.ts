@@ -23,13 +23,26 @@ async function api<T>(
       if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
     }
   }
-  const res = await fetch(url, {
-    headers: { "User-Agent": UA, Accept: "application/json" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`poe2scout ${res.status} for ${path}`);
-  return schema.parse(await res.json());
+  // One retry on a failed fetch: upstream blips are common enough that a
+  // single second attempt fixes most of them without masking real outages.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": UA, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.status >= 500) throw new Error(`poe2scout ${res.status} for ${path}`);
+      if (!res.ok) throw Object.assign(new Error(`poe2scout ${res.status} for ${path}`), { noRetry: true });
+      return schema.parse(await res.json());
+    } catch (err) {
+      lastErr = err;
+      if ((err as { noRetry?: boolean }).noRetry) break;
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr;
 }
 
 /* ----------------------------------- schemas ----------------------------------- */
@@ -111,6 +124,20 @@ const paginated = <T>(item: z.ZodType<T>) =>
     Items: z.array(item),
   });
 
+/** /Items: the whole league catalog (uniques + currencies) with prices, one call. */
+const CatalogItemZ = z
+  .object({
+    ItemId: z.number(),
+    CategoryApiId: z.string(),
+    Text: z.string().nullable(),
+    Name: z.string().nullable(),
+    Type: z.string().nullable(),
+    ApiId: z.string().nullable(),
+    CurrentPrice: z.number().nullable(),
+    IconUrl: z.string().nullable(),
+  })
+  .passthrough();
+
 /* ---------------------------------- public types ---------------------------------- */
 export type League = { value: string; shortName: string; divinePrice: number | null };
 export type Category = { id: string; label: string; icon: string | null };
@@ -154,6 +181,18 @@ export type Page<T> = {
   pages: number;
   total: number;
   items: T[];
+};
+
+export type CatalogItem = {
+  itemId: number;
+  category: string;
+  kind: "unique" | "currency";
+  /** Unique name ("Sacred Flame") or currency text ("Divine Orb"). */
+  name: string;
+  /** Base type for uniques ("Sceptre"), null for currencies. */
+  base: string | null;
+  price: number | null;
+  icon: string | null;
 };
 
 /* ---------------------------------- normalize ---------------------------------- */
@@ -248,17 +287,85 @@ export async function getCategories(): Promise<{ unique: Category[]; currency: C
 
 type ListOpts = { page?: number; perPage?: number; search?: string };
 
+/**
+ * Search note: poe2scout's `Search` query param is an EXACT full-name match
+ * upstream ("Sacred Flame" hits, "sacred" returns nothing), so it is useless
+ * for the substring search the UI offers. We never send it. Instead, a search
+ * pulls every (cached) page of the category and filters locally.
+ */
+const matches = (q: string, ...fields: (string | null | undefined)[]) =>
+  fields.some((f) => f != null && f.toLowerCase().includes(q));
+
+function sliceForPage<T>(all: T[], page: number, perPage: number) {
+  const pages = Math.max(1, Math.ceil(all.length / perPage));
+  const p = Math.min(Math.max(1, page), pages);
+  return { items: all.slice((p - 1) * perPage, p * perPage), page: p, pages, total: all.length };
+}
+
+type RawPage<T> = { CurrentPage: number; Pages: number; Total: number; Items: T[] };
+
+/** Fetches one ByCategory page through the cache; the key ignores search. */
+async function categoryPage<T>(
+  kind: "Currencies" | "Uniques",
+  schema: z.ZodType<RawPage<T>>,
+  league: League,
+  category: string,
+  page: number,
+  perPage: number,
+  ttl: number
+): Promise<Cached<RawPage<T>>> {
+  const key = `${kind}:${league.value}:${category}:${page}:${perPage}`;
+  return cached(key, ttl, () =>
+    api(schema, `/${REALM}/Leagues/${encodeURIComponent(league.value)}/${kind}/ByCategory`, {
+      Category: category,
+      Page: page,
+      PerPage: perPage,
+    })
+  );
+}
+
+/** Fetches every page of a category (each page individually cached). */
+async function wholeCategory<T>(
+  kind: "Currencies" | "Uniques",
+  schema: z.ZodType<RawPage<T>>,
+  league: League,
+  category: string,
+  perPage: number,
+  ttl: number
+): Promise<{ items: T[]; fetchedAt: number; stale: boolean }> {
+  const first = await categoryPage(kind, schema, league, category, 1, perPage, ttl);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, first.data.Pages - 1) }, (_, i) =>
+      categoryPage(kind, schema, league, category, i + 2, perPage, ttl)
+    )
+  );
+  const all = [first, ...rest];
+  return {
+    items: all.flatMap((p) => p.data.Items),
+    fetchedAt: Math.min(...all.map((p) => p.fetchedAt)),
+    stale: all.some((p) => p.stale),
+  };
+}
+
+const CUR_TTL = 15 * 60_000;
+const UNIQ_TTL = 30 * 60_000;
+
 export async function getCurrencies(category: string, opts: ListOpts = {}): Promise<Page<Currency>> {
   const league = await getCurrentLeague();
   const page = opts.page ?? 1;
   const perPage = opts.perPage ?? 60;
-  const key = `cur:${league.value}:${category}:${page}:${perPage}:${opts.search ?? ""}`;
-  const { data, fetchedAt, stale } = await cached(key, 15 * 60_000, () =>
-    api(
-      paginated(CurrencyZ),
-      `/${REALM}/Leagues/${encodeURIComponent(league.value)}/Currencies/ByCategory`,
-      { Category: category, Page: page, PerPage: perPage, Search: opts.search }
-    )
+  const q = opts.search?.trim().toLowerCase();
+
+  if (q) {
+    const whole = await wholeCategory(
+      "Currencies", paginated(CurrencyZ), league, category, perPage, CUR_TTL
+    );
+    const hits = whole.items.map(normCurrency).filter((c) => matches(q, c.name));
+    return { league, fetchedAt: whole.fetchedAt, stale: whole.stale, ...sliceForPage(hits, page, perPage) };
+  }
+
+  const { data, fetchedAt, stale } = await categoryPage(
+    "Currencies", paginated(CurrencyZ), league, category, page, perPage, CUR_TTL
   );
   return {
     league,
@@ -275,13 +382,18 @@ export async function getUniques(category: string, opts: ListOpts = {}): Promise
   const league = await getCurrentLeague();
   const page = opts.page ?? 1;
   const perPage = opts.perPage ?? 48;
-  const key = `uniq:${league.value}:${category}:${page}:${perPage}:${opts.search ?? ""}`;
-  const { data, fetchedAt, stale } = await cached(key, 30 * 60_000, () =>
-    api(
-      paginated(UniqueZ),
-      `/${REALM}/Leagues/${encodeURIComponent(league.value)}/Uniques/ByCategory`,
-      { Category: category, Page: page, PerPage: perPage, Search: opts.search }
-    )
+  const q = opts.search?.trim().toLowerCase();
+
+  if (q) {
+    const whole = await wholeCategory(
+      "Uniques", paginated(UniqueZ), league, category, perPage, UNIQ_TTL
+    );
+    const hits = whole.items.map(normUnique).filter((u) => matches(q, u.name, u.base, u.fullName));
+    return { league, fetchedAt: whole.fetchedAt, stale: whole.stale, ...sliceForPage(hits, page, perPage) };
+  }
+
+  const { data, fetchedAt, stale } = await categoryPage(
+    "Uniques", paginated(UniqueZ), league, category, page, perPage, UNIQ_TTL
   );
   return {
     league,
@@ -292,6 +404,44 @@ export async function getUniques(category: string, opts: ListOpts = {}): Promise
     total: data.Total,
     items: data.Items.map(normUnique),
   };
+}
+
+/* ---------------------------------- catalog ---------------------------------- */
+
+/** The whole league catalog (1.2k+ items, prices included) in one cached call. */
+export async function getCatalog(): Promise<{ items: CatalogItem[]; fetchedAt: number; stale: boolean }> {
+  const league = await getCurrentLeague();
+  const { data, fetchedAt, stale } = await cached(`catalog:${league.value}`, 10 * 60_000, () =>
+    api(z.array(CatalogItemZ), `/${REALM}/Leagues/${encodeURIComponent(league.value)}/Items`)
+  );
+  const items = data
+    .map((it): CatalogItem | null => {
+      const name = it.Name ?? it.Text;
+      if (!name) return null;
+      return {
+        itemId: it.ItemId,
+        category: it.CategoryApiId,
+        // Uniques carry a Name; currencies carry only ApiId/Text.
+        kind: it.Name != null ? "unique" : "currency",
+        name,
+        base: it.Name != null ? it.Type : null,
+        price: it.CurrentPrice,
+        icon: it.IconUrl,
+      };
+    })
+    .filter((x): x is CatalogItem => x !== null);
+  return { items, fetchedAt, stale };
+}
+
+/** Case-insensitive substring search across the whole catalog. */
+export async function searchCatalog(query: string, limit = 24): Promise<CatalogItem[]> {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const { items } = await getCatalog();
+  return items
+    .filter((it) => matches(q, it.name, it.base))
+    .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
+    .slice(0, limit);
 }
 
 /* ---------------------------------- exchange ---------------------------------- */

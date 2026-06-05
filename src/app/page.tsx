@@ -8,9 +8,9 @@ import { UniqueCard } from "@/components/uniques/UniqueCard";
 import { CampaignSpine } from "@/components/story/CampaignSpine";
 import { PROFILE } from "@/lib/config";
 import { getSession } from "@/lib/session";
-import { getCurrencies, getUniques, getExchangePulse, type Unique } from "@/lib/poe2scout";
-import { getTracker, type TrackStatus } from "@/lib/tracker";
-import { getProgress } from "@/lib/progress-store";
+import { getCurrencies, getUniques, getExchangePulse, getCatalog, type Unique } from "@/lib/poe2scout";
+import { getProgress, getTrackerEntries } from "@/lib/save-server";
+import type { TrackStatus } from "@/lib/save";
 import { TOTAL_MILESTONES } from "@/lib/campaign";
 import { formatPrice, timeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -50,14 +50,17 @@ function Tick({ label, children, accent }: { label: string; children: React.Reac
 export default async function Home() {
   const session = await getSession();
 
-  const [econ, weapons, armour, pulse, tracker, progress] = await Promise.all([
-    getCurrencies("currency", { perPage: 60 }).catch(() => null),
-    getUniques("weapon", { perPage: 24 }).catch(() => null),
-    getUniques("armour", { perPage: 16 }).catch(() => null),
-    getExchangePulse().catch(() => null),
-    getTracker(session.uid).catch(() => ({}) as Awaited<ReturnType<typeof getTracker>>),
-    getProgress(session.uid).catch(() => [] as string[]),
-  ]);
+  const [econ, weapons, armour, accessories, pulse, catalog, progress, trackerEntries] =
+    await Promise.all([
+      getCurrencies("currency", { perPage: 60 }).catch(() => null),
+      getUniques("weapon", { perPage: 24 }).catch(() => null),
+      getUniques("armour", { perPage: 16 }).catch(() => null),
+      getUniques("accessory", { perPage: 16 }).catch(() => null),
+      getExchangePulse().catch(() => null),
+      getCatalog().catch(() => null),
+      getProgress(),
+      getTrackerEntries(),
+    ]);
 
   const league = econ?.league.value ?? PROFILE.league;
   const currSorted = econ ? [...econ.items].sort((a, b) => (b.price ?? 0) - (a.price ?? 0)) : [];
@@ -78,7 +81,7 @@ export default async function Home() {
 
   const seen = new Set<number>();
   const chase: Unique[] = [];
-  for (const u of [...(weapons?.items ?? []), ...(armour?.items ?? [])]
+  for (const u of [...(weapons?.items ?? []), ...(armour?.items ?? []), ...(accessories?.items ?? [])]
     .filter((u) => u.price != null)
     .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))) {
     if (seen.has(u.id)) continue;
@@ -87,7 +90,10 @@ export default async function Home() {
     if (chase.length >= 6) break;
   }
 
-  const tracked = Object.values(tracker).sort((a, b) => b.updatedAt - a.updatedAt);
+  // Tracker cookie stores itemId + status in touch order; the catalog supplies names.
+  const catalogById = new Map((catalog?.items ?? []).map((i) => [i.itemId, i]));
+  const trackerStatus = new Map(trackerEntries.map((e) => [e.itemId, e.status]));
+  const tracked = [...trackerEntries].reverse();
   const pct = Math.round((progress.length / TOTAL_MILESTONES) * 100);
 
   return (
@@ -137,7 +143,7 @@ export default async function Home() {
           {chase.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {chase.map((u) => (
-                <UniqueCard key={u.id} unique={u} initialStatus={tracker[String(u.id)]?.status ?? null} />
+                <UniqueCard key={u.id} unique={u} initialStatus={trackerStatus.get(u.itemId) ?? null} />
               ))}
             </div>
           ) : (
@@ -222,7 +228,7 @@ export default async function Home() {
 
         <Panel className="reveal p-5 xl:col-span-3" style={{ animationDelay: "320ms" }}>
           <PanelHead
-            eyebrow="24h"
+            eyebrow="Swings"
             title="Market Movers"
             action={<TrendingUp size={15} strokeWidth={1.75} className="text-gold-400" />}
           />
@@ -245,10 +251,12 @@ export default async function Home() {
           {tracked.length > 0 ? (
             <ul className="flex flex-col gap-2.5">
               {tracked.slice(0, 7).map((t) => (
-                <li key={t.itemId + t.name} className="flex items-center justify-between gap-2">
+                <li key={t.itemId} className="flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[t.status])} />
-                    <span className="t-unique truncate text-[13px]">{t.name}</span>
+                    <span className="t-unique truncate text-[13px]">
+                      {catalogById.get(t.itemId)?.name ?? `#${t.itemId}`}
+                    </span>
                   </span>
                   <span className="mono shrink-0 text-[9.5px] uppercase tracking-wider text-bone-500">
                     {t.status}

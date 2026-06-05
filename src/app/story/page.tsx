@@ -1,13 +1,11 @@
-import { getSession } from "@/lib/session";
-import { getProgress } from "@/lib/progress-store";
+import { getProgress } from "@/lib/save-server";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StoryTracker } from "@/components/story/StoryTracker";
 
 export const dynamic = "force-dynamic";
 
 export default async function StoryPage() {
-  const session = await getSession();
-  const checked = await getProgress(session.uid);
+  const checked = await getProgress();
 
   return (
     <div className="reveal">

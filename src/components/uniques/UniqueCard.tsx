@@ -6,7 +6,14 @@ import { Delta } from "@/components/ui/Delta";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Unique } from "@/lib/poe2scout";
-import type { TrackStatus } from "@/lib/tracker";
+import {
+  TRACKER_COOKIE,
+  decodeTracker,
+  encodeTracker,
+  withStatus,
+  type TrackStatus,
+} from "@/lib/save";
+import { readCookie, writeCookie } from "@/lib/save-client";
 
 const STATUSES: { key: TrackStatus; label: string }[] = [
   { key: "have", label: "Have" },
@@ -35,31 +42,13 @@ export function UniqueCard({
   initialStatus: TrackStatus | null;
 }) {
   const [status, setStatus] = useState<TrackStatus | null>(initialStatus);
-  const [busy, setBusy] = useState(false);
 
-  async function toggle(s: TrackStatus) {
+  /** Tracker lives in a cookie the browser owns: read, update, write. */
+  function toggle(s: TrackStatus) {
     const next = status === s ? null : s;
-    const prev = status;
+    const entries = decodeTracker(readCookie(TRACKER_COOKIE));
+    writeCookie(TRACKER_COOKIE, encodeTracker(withStatus(entries, unique.itemId, next)));
     setStatus(next);
-    setBusy(true);
-    try {
-      const res = await fetch("/api/tracker", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          uniqueId: unique.id,
-          status: next,
-          itemId: unique.itemId,
-          name: unique.name,
-          category: unique.category,
-        }),
-      });
-      if (!res.ok) setStatus(prev);
-    } catch {
-      setStatus(prev);
-    } finally {
-      setBusy(false);
-    }
   }
 
   return (
@@ -109,10 +98,9 @@ export function UniqueCard({
           <button
             key={s.key}
             type="button"
-            disabled={busy}
             onClick={() => toggle(s.key)}
             className={cn(
-              "mono flex-1 rounded-[4px] border px-2 py-1.5 text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-60",
+              "mono flex-1 rounded-[4px] border px-2 py-1.5 text-[10px] uppercase tracking-[0.12em] transition-colors",
               status === s.key
                 ? activeFor(s.key)
                 : "border-gold-700/20 text-bone-500 hover:border-gold-600/40 hover:text-bone-300"

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { CAMPAIGN, TOTAL_MILESTONES, type MilestoneTag } from "@/lib/campaign";
+import { PROGRESS_COOKIE, encodeProgress } from "@/lib/save";
+import { writeCookie } from "@/lib/save-client";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/cn";
 
@@ -19,23 +21,13 @@ const TAG_DOT: Record<MilestoneTag, string> = {
 export function StoryTracker({ initialChecked }: { initialChecked: string[] }) {
   const [checked, setChecked] = useState<Set<string>>(() => new Set(initialChecked));
 
-  async function toggle(id: string) {
-    const done = !checked.has(id);
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (done) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-    try {
-      await fetch("/api/progress", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, done }),
-      });
-    } catch {
-      /* keep optimistic state */
-    }
+  /** The cookie is the save file: write it directly, no round-trip. */
+  function toggle(id: string) {
+    const next = new Set(checked);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    writeCookie(PROGRESS_COOKIE, encodeProgress(next));
+    setChecked(next);
   }
 
   const doneTotal = CAMPAIGN.reduce(

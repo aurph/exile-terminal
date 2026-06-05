@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getCurrencies, getUniques, getCurrentLeague } from "./poe2scout";
-import { getTracker } from "./tracker";
+import { getCurrencies, getUniques, getCurrentLeague, getCatalog } from "./poe2scout";
+import { getTrackerEntries } from "./save-server";
 import { PROFILE } from "./config";
 
 /**
@@ -74,11 +74,7 @@ const tools: Anthropic.Messages.ToolUnion[] = [
   { type: "web_search_20260209", name: "web_search" },
 ];
 
-async function runTool(
-  name: string,
-  input: Record<string, unknown>,
-  uid: string | null
-): Promise<string> {
+async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
   try {
     if (name === "get_economy") {
       const cat = (input.category as string) || "currency";
@@ -101,8 +97,18 @@ async function runTool(
       return JSON.stringify({ league: page.league.value, category: cat, items });
     }
     if (name === "get_tracked_uniques") {
-      const t = await getTracker(uid);
-      return JSON.stringify(Object.values(t).map((e) => ({ name: e.name, status: e.status })));
+      // Tracker lives in the visitor's cookie (itemId + status); names and
+      // prices come from the catalog.
+      const entries = await getTrackerEntries();
+      const { items } = await getCatalog().catch(() => ({ items: [] }));
+      const byId = new Map(items.map((i) => [i.itemId, i]));
+      return JSON.stringify(
+        entries.map((e) => ({
+          name: byId.get(e.itemId)?.name ?? `#${e.itemId}`,
+          status: e.status,
+          ex: byId.get(e.itemId)?.price ?? null,
+        }))
+      );
     }
     if (name === "get_current_league") {
       const l = await getCurrentLeague();
@@ -118,8 +124,7 @@ export type OracleMessage = { role: "user" | "assistant"; content: string };
 
 export async function askOracle(
   question: string,
-  history: OracleMessage[] = [],
-  ctx: { uid: string | null } = { uid: null }
+  history: OracleMessage[] = []
 ): Promise<{ answer: string; usedWeb: boolean }> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return {
@@ -155,7 +160,7 @@ export async function askOracle(
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of res.content) {
         if (block.type === "tool_use") {
-          const out = await runTool(block.name, (block.input ?? {}) as Record<string, unknown>, ctx.uid);
+          const out = await runTool(block.name, (block.input ?? {}) as Record<string, unknown>);
           results.push({ type: "tool_result", tool_use_id: block.id, content: out });
         }
       }

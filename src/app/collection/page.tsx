@@ -1,32 +1,34 @@
 import Link from "next/link";
-import { getSession } from "@/lib/session";
-import { getTracker } from "@/lib/tracker";
-import { getCategories, getUniques } from "@/lib/poe2scout";
+import { getTrackerEntries } from "@/lib/save-server";
+import { getCategories, getCatalog } from "@/lib/poe2scout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel, PanelHead } from "@/components/ui/Panel";
 
 export const dynamic = "force-dynamic";
 
 export default async function CollectionPage() {
-  const session = await getSession();
-  const tracker = await getTracker(session.uid).catch(() => ({}));
-  const entries = Object.values(tracker);
+  const [trackerEntries, catalog] = await Promise.all([
+    getTrackerEntries(),
+    getCatalog().catch(() => null),
+  ]);
+  const catalogById = new Map((catalog?.items ?? []).map((i) => [i.itemId, i]));
+  const entries = trackerEntries.map((e) => ({
+    ...e,
+    name: catalogById.get(e.itemId)?.name ?? `#${e.itemId}`,
+    category: catalogById.get(e.itemId)?.category,
+  }));
   const owned = entries.filter((e) => e.status === "have");
   const wanted = entries.filter((e) => e.status === "want");
   const chasing = entries.filter((e) => e.status === "chasing");
 
+  // Catalog totals per unique category, all from the one cached /Items call.
   let cats: Awaited<ReturnType<typeof getCategories>> | null = null;
-  let totals: Record<string, number> = {};
+  const totals: Record<string, number> = {};
   try {
     cats = await getCategories();
-    const results = await Promise.all(
-      cats.unique.map((c) =>
-        getUniques(c.id, { perPage: 1 })
-          .then((r) => [c.id, r.total] as const)
-          .catch(() => [c.id, 0] as const)
-      )
-    );
-    totals = Object.fromEntries(results);
+    for (const item of catalog?.items ?? []) {
+      if (item.kind === "unique") totals[item.category] = (totals[item.category] ?? 0) + 1;
+    }
   } catch {
     cats = null;
   }
@@ -109,7 +111,7 @@ export default async function CollectionPage() {
                 .slice()
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((e) => (
-                  <div key={e.itemId + e.name} className="flex items-center justify-between gap-2 border-b border-gold-700/10 py-1.5">
+                  <div key={e.itemId} className="flex items-center justify-between gap-2 border-b border-gold-700/10 py-1.5">
                     <span className="t-unique truncate text-[12.5px]">{e.name}</span>
                     <span className="mono shrink-0 text-[9.5px] uppercase tracking-wider text-bone-600">{e.category ?? ""}</span>
                   </div>

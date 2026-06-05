@@ -65,7 +65,10 @@ export default async function UniquesPage({
         action={
           <div className="text-right">
             <div className="eyebrow text-bone-500">{trackedCount} tracked</div>
-            <div className="mono mt-1 text-[11px] text-bone-400">updated {timeAgo(data.fetchedAt)}</div>
+            <div className="mono mt-1 text-[11px] text-bone-400">
+              {data.stale && <span className="mr-1.5 text-blood-400">stale ·</span>}
+              updated {timeAgo(data.fetchedAt)}
+            </div>
           </div>
         }
       />

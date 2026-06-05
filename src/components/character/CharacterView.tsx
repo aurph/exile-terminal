@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { RefreshCw, ShieldHalf } from "lucide-react";
 import type { ParsedBuild } from "@/lib/pob";
-import { BUILD_STORAGE_KEY } from "@/lib/save";
+import { readStoredBuild, subscribeToBuild, writeBuild } from "@/lib/save-client";
 import { ImportForm } from "@/components/character/ImportForm";
 import { BuildRadar } from "@/components/character/BuildRadar";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -12,35 +12,9 @@ import { Panel } from "@/components/ui/Panel";
 /**
  * The imported build lives in this browser's localStorage: the server parses
  * the PoB code and hands it back, but never stores it. The store is read via
- * useSyncExternalStore so the same-tab writes, other-tab writes (storage
- * event), and SSR ("init" until hydration) all stay consistent.
+ * useSyncExternalStore so same-tab writes, other-tab writes (storage event),
+ * and SSR ("init" until hydration) all stay consistent.
  */
-const CHANGE_EVENT = "exile:build-change";
-
-// getSnapshot must be referentially stable, so cache by the raw string.
-let snapshotCache: { raw: string | null; build: ParsedBuild | null } = { raw: "", build: null };
-
-function getSnapshot(): ParsedBuild | null {
-  let raw: string | null;
-  try {
-    raw = window.localStorage.getItem(BUILD_STORAGE_KEY);
-  } catch {
-    raw = null;
-  }
-  if (snapshotCache.raw !== raw) {
-    let build: ParsedBuild | null = null;
-    if (raw) {
-      try {
-        const b = JSON.parse(raw) as ParsedBuild;
-        if (b && typeof b === "object" && typeof b.stats === "object") build = b;
-      } catch {
-        /* corrupt save: treat as empty */
-      }
-    }
-    snapshotCache = { raw, build };
-  }
-  return snapshotCache.build;
-}
 
 // During SSR and hydration's first paint the save is unknowable.
 const INIT = Symbol("init");
@@ -48,29 +22,10 @@ function getServerSnapshot(): typeof INIT {
   return INIT;
 }
 
-function subscribe(onChange: () => void): () => void {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(CHANGE_EVENT, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(CHANGE_EVENT, onChange);
-  };
-}
-
-function writeBuild(build: ParsedBuild | null): void {
-  try {
-    if (build) window.localStorage.setItem(BUILD_STORAGE_KEY, JSON.stringify(build));
-    else window.localStorage.removeItem(BUILD_STORAGE_KEY);
-  } catch {
-    /* storage blocked or full; the UI still updates for this session */
-  }
-  window.dispatchEvent(new Event(CHANGE_EVENT));
-}
-
 export function CharacterView() {
   const stored = useSyncExternalStore<ParsedBuild | null | typeof INIT>(
-    subscribe,
-    getSnapshot,
+    subscribeToBuild,
+    readStoredBuild,
     getServerSnapshot
   );
 

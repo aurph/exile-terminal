@@ -81,6 +81,7 @@ Set the environment variables above in your host's secrets store.
 ## Notes
 
 - No login and no server-side user storage at all. Campaign progress and the uniques tracker are compact cookies the browser writes itself; the imported build is localStorage. Your data survives refreshes, server restarts, and redeploys because it never leaves your browser.
+- **Save codes** (Account page): export progress + tracker + build as one `EXILE1.` string, PoB-style. Move it to another browser or keep it as a backup. The Campaign page has a reset button for new leagues.
 - Search is done locally against cached poe2scout data (the upstream search param only matches exact full names, so the app never uses it).
 - External data is cached in-process with a short TTL, retried once on failure, and falls back to the last good value on a failed fetch.
 - Not affiliated with or endorsed by Grinding Gear Games. Path of Exile and Path of Exile 2 are trademarks of Grinding Gear Games. The orb mark is an original rendition, not GGG artwork.

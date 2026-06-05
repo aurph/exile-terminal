@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, Search, TriangleAlert } from "lucide-react";
 import {
   getCurrencies,
   getCategories,
@@ -20,18 +20,19 @@ export const dynamic = "force-dynamic";
 export default async function MarketPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string; page?: string }>;
+  searchParams: Promise<{ cat?: string; page?: string; q?: string }>;
 }) {
   const sp = await searchParams;
   const cat = sp.cat ?? "currency";
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+  const q = (sp.q ?? "").trim();
 
   let data: Awaited<ReturnType<typeof getCurrencies>> | null = null;
   let cats: { unique: Category[]; currency: Category[] } | null = null;
   let error: string | null = null;
   try {
     [data, cats] = await Promise.all([
-      getCurrencies(cat, { page, perPage: 60 }),
+      getCurrencies(cat, { page, perPage: 60, search: q }),
       getCategories(),
     ]);
   } catch (e) {
@@ -74,25 +75,40 @@ export default async function MarketPage({
 
       {pulse && <MarketPulse pulse={pulse} />}
 
-      {/* category tabs */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {categories.map((c) => {
-          const active = c.id === cat;
-          return (
-            <Link
-              key={c.id}
-              href={`/market?cat=${c.id}`}
-              className={cn(
-                "mono rounded-[4px] border px-2.5 py-1 text-[10.5px] uppercase tracking-[0.12em] transition-colors",
-                active
-                  ? "border-gold-500/50 bg-gold-500/15 text-gold-200"
-                  : "border-gold-700/20 bg-ink-900/40 text-bone-500 hover:border-gold-600/40 hover:text-bone-300"
-              )}
-            >
-              {c.label}
-            </Link>
-          );
-        })}
+      {/* category tabs + search */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {categories.map((c) => {
+            const active = c.id === cat;
+            return (
+              <Link
+                key={c.id}
+                href={`/market?cat=${c.id}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+                className={cn(
+                  "mono rounded-[4px] border px-2.5 py-1 text-[10.5px] uppercase tracking-[0.12em] transition-colors",
+                  active
+                    ? "border-gold-500/50 bg-gold-500/15 text-gold-200"
+                    : "border-gold-700/20 bg-ink-900/40 text-bone-500 hover:border-gold-600/40 hover:text-bone-300"
+                )}
+              >
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        <form action="/market" method="get" className="flex items-center">
+          <input type="hidden" name="cat" value={cat} />
+          <div className="flex items-center gap-2 rounded-[5px] border border-gold-700/25 bg-ink-900/60 px-3 py-1.5 focus-within:border-gold-500/50">
+            <Search size={14} className="text-bone-500" />
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="search this category"
+              className="mono w-44 bg-transparent text-[12px] text-bone-100 placeholder:text-bone-600 focus:outline-none"
+            />
+          </div>
+        </form>
       </div>
 
       <Panel className="overflow-hidden p-0">
@@ -111,7 +127,7 @@ export default async function MarketPage({
           ))}
           {items.length === 0 && (
             <li className="px-5 py-10 text-center text-[13px] text-bone-500">
-              No items in this category.
+              {q ? `No items match "${q}" in this category.` : "No items in this category."}
             </li>
           )}
         </ul>
@@ -123,8 +139,8 @@ export default async function MarketPage({
           {data.total} items · page {data.page} of {data.pages}
         </span>
         <div className="flex gap-2">
-          <PageLink cat={cat} page={page - 1} disabled={page <= 1} dir="prev" />
-          <PageLink cat={cat} page={page + 1} disabled={page >= data.pages} dir="next" />
+          <PageLink cat={cat} q={q} page={page - 1} disabled={page <= 1} dir="prev" />
+          <PageLink cat={cat} q={q} page={page + 1} disabled={page >= data.pages} dir="next" />
         </div>
       </div>
     </div>
@@ -164,11 +180,13 @@ function CurrencyRow({ c, dim }: { c: Currency; dim: boolean }) {
 
 function PageLink({
   cat,
+  q,
   page,
   disabled,
   dir,
 }: {
   cat: string;
+  q: string;
   page: number;
   disabled: boolean;
   dir: "prev" | "next";
@@ -186,7 +204,7 @@ function PageLink({
   }
   return (
     <Link
-      href={`/market?cat=${cat}&page=${page}`}
+      href={`/market?cat=${cat}&page=${page}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
       className={cn(cls, "border-gold-600/40 text-bone-300 hover:bg-gold-500/10 hover:text-gold-200")}
     >
       {dir === "prev" && <ArrowLeft size={13} />}

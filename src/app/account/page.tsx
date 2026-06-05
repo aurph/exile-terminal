@@ -2,6 +2,7 @@ import { getSession } from "@/lib/session";
 import { setAccount, clearAccount } from "@/app/actions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
+import { SaveCodePanel } from "@/components/account/SaveCodePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function AccountPage() {
       <PageHeader
         eyebrow="Account"
         title="Point the Terminal"
-        sub="Aim it at any Path of Exile 2 account. Your uniques watchlist stays in this browser, no login."
+        sub="Aim it at any Path of Exile 2 account. Progress, tracker, and build stay in this browser, no login."
       />
 
       <Panel className="max-w-xl p-6">
@@ -57,6 +58,8 @@ export default async function AccountPage() {
           </form>
         )}
       </Panel>
+
+      <SaveCodePanel />
     </div>
   );
 }

@@ -111,7 +111,10 @@ export default async function Home() {
             </h1>
           </div>
           {econ && (
-            <span className="mono text-[10.5px] text-bone-600">feed · {timeAgo(econ.fetchedAt)}</span>
+            <span className="mono text-[10.5px] text-bone-600">
+              feed · {timeAgo(econ.fetchedAt)}
+              {econ.stale && <span className="ml-1.5 text-blood-400">· stale</span>}
+            </span>
           )}
         </div>
 

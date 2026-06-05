@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 import { CAMPAIGN, TOTAL_MILESTONES, type MilestoneTag } from "@/lib/campaign";
 import { PROGRESS_COOKIE, encodeProgress } from "@/lib/save";
 import { writeCookie } from "@/lib/save-client";
@@ -30,6 +30,13 @@ export function StoryTracker({ initialChecked }: { initialChecked: string[] }) {
     setChecked(next);
   }
 
+  /** New league, new run. */
+  function reset() {
+    if (!window.confirm("Reset the whole run? Every milestone goes back to unchecked.")) return;
+    writeCookie(PROGRESS_COOKIE, "");
+    setChecked(new Set());
+  }
+
   const doneTotal = CAMPAIGN.reduce(
     (n, a) => n + a.milestones.filter((m) => checked.has(m.id)).length,
     0
@@ -45,13 +52,26 @@ export function StoryTracker({ initialChecked }: { initialChecked: string[] }) {
             <div className="eyebrow text-bone-500">Run Progress</div>
             <div className="foil font-display text-3xl leading-none">{pct}%</div>
           </div>
-          <div className="text-right">
-            <div className="mono text-[13px] text-bone-200">
-              {doneTotal} / {TOTAL_MILESTONES}
+          <div className="flex items-end gap-4">
+            <div className="text-right">
+              <div className="mono text-[13px] text-bone-200">
+                {doneTotal} / {TOTAL_MILESTONES}
+              </div>
+              <div className="mono text-[10.5px] text-bone-500">
+                {current ? `at ${current.name}` : "Endgame reached"}
+              </div>
             </div>
-            <div className="mono text-[10.5px] text-bone-500">
-              {current ? `at ${current.name}` : "Endgame reached"}
-            </div>
+            {doneTotal > 0 && (
+              <button
+                type="button"
+                onClick={reset}
+                title="Reset the run (new league)"
+                className="mono inline-flex items-center gap-1.5 rounded-[5px] border border-gold-700/30 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.14em] text-bone-500 transition-colors hover:border-blood-600/40 hover:text-blood-400"
+              >
+                <RotateCcw size={12} />
+                Reset run
+              </button>
+            )}
           </div>
         </div>
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink-700/60">

@@ -69,3 +69,65 @@ export function withStatus(
   const rest = entries.filter((e) => e.itemId !== itemId);
   return status === null ? rest : [...rest, { itemId, status }];
 }
+
+/* ------------------------------- save codes ------------------------------- */
+
+/**
+ * A save code is the whole browser-owned save as one PoB-style string:
+ * "EXILE1." + base64url(JSON { p: progress cookie, t: tracker cookie,
+ * b: parsed build | null }). For moving a save between browsers or keeping a
+ * backup; decoding runs everything back through the strict codecs above.
+ */
+const SAVE_CODE_PREFIX = "EXILE1.";
+
+export type SaveData = {
+  progress: string[];
+  tracker: TrackEntry[];
+  build: unknown | null;
+};
+
+function toBase64Url(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function fromBase64Url(s: string): string {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+export function encodeSaveCode(data: SaveData): string {
+  const payload = JSON.stringify({
+    p: encodeProgress(data.progress),
+    t: encodeTracker(data.tracker),
+    b: data.build ?? null,
+  });
+  return SAVE_CODE_PREFIX + toBase64Url(payload);
+}
+
+export function decodeSaveCode(code: string): SaveData | null {
+  const trimmed = code.trim();
+  if (!trimmed.startsWith(SAVE_CODE_PREFIX)) return null;
+  try {
+    const raw = JSON.parse(fromBase64Url(trimmed.slice(SAVE_CODE_PREFIX.length))) as {
+      p?: unknown;
+      t?: unknown;
+      b?: unknown;
+    };
+    const build =
+      raw.b && typeof raw.b === "object" && typeof (raw.b as { stats?: unknown }).stats === "object"
+        ? raw.b
+        : null;
+    return {
+      progress: decodeProgress(typeof raw.p === "string" ? raw.p : ""),
+      tracker: decodeTracker(typeof raw.t === "string" ? raw.t : ""),
+      build,
+    };
+  } catch {
+    return null;
+  }
+}
